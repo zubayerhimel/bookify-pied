@@ -1,4 +1,4 @@
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, IDBPDatabase } from 'idb';
 import {
   PDFDocument,
   PDFFile,
@@ -10,130 +10,116 @@ import {
   STORE_NAMES,
 } from './types';
 
-interface ReaderDBSchema extends DBSchema {
-  [STORE_NAMES.DOCUMENTS]: {
-    key: string;
-    value: PDFDocument;
-    indexes: { 'by-lastOpened': Date };
-  };
-  [STORE_NAMES.FILES]: {
-    key: string;
-    value: PDFFile;
-  };
-  [STORE_NAMES.HIGHLIGHTS]: {
-    key: string;
-    value: Highlight;
-    indexes: { 'by-pdfId': string; 'by-page': [string, number] };
-  };
-  [STORE_NAMES.QUOTES]: {
-    key: string;
-    value: Quote;
-    indexes: { 'by-pdfId': string; 'by-date': Date };
-  };
-  [STORE_NAMES.NOTES]: {
-    key: string;
-    value: Note;
-    indexes: { 'by-pdfId': string; 'by-date': Date };
-  };
-}
+let dbInstance: IDBPDatabase | null = null;
 
-let dbInstance: IDBPDatabase<ReaderDBSchema> | null = null;
-
-export async function getDB(): Promise<IDBPDatabase<ReaderDBSchema>> {
+export async function getDB(): Promise<IDBPDatabase> {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<ReaderDBSchema>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Documents store
-      if (!db.objectStoreNames.contains(STORE_NAMES.DOCUMENTS)) {
-        const docStore = db.createObjectStore(STORE_NAMES.DOCUMENTS, { keyPath: 'id' });
-        docStore.createIndex('by-lastOpened', 'lastOpened');
-      }
+  try {
+    dbInstance = await openDB(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        // Documents store
+        if (!db.objectStoreNames.contains(STORE_NAMES.DOCUMENTS)) {
+          db.createObjectStore(STORE_NAMES.DOCUMENTS, { keyPath: 'id' });
+        }
 
-      // Files store (separate for large binary data)
-      if (!db.objectStoreNames.contains(STORE_NAMES.FILES)) {
-        db.createObjectStore(STORE_NAMES.FILES, { keyPath: 'id' });
-      }
+        // Files store (separate for large binary data)
+        if (!db.objectStoreNames.contains(STORE_NAMES.FILES)) {
+          db.createObjectStore(STORE_NAMES.FILES, { keyPath: 'id' });
+        }
 
-      // Highlights store
-      if (!db.objectStoreNames.contains(STORE_NAMES.HIGHLIGHTS)) {
-        const highlightStore = db.createObjectStore(STORE_NAMES.HIGHLIGHTS, { keyPath: 'id' });
-        highlightStore.createIndex('by-pdfId', 'pdfId');
-        highlightStore.createIndex('by-page', ['pdfId', 'pageNumber']);
-      }
+        // Highlights store
+        if (!db.objectStoreNames.contains(STORE_NAMES.HIGHLIGHTS)) {
+          db.createObjectStore(STORE_NAMES.HIGHLIGHTS, { keyPath: 'id' });
+        }
 
-      // Quotes store
-      if (!db.objectStoreNames.contains(STORE_NAMES.QUOTES)) {
-        const quoteStore = db.createObjectStore(STORE_NAMES.QUOTES, { keyPath: 'id' });
-        quoteStore.createIndex('by-pdfId', 'pdfId');
-        quoteStore.createIndex('by-date', 'createdAt');
-      }
+        // Quotes store
+        if (!db.objectStoreNames.contains(STORE_NAMES.QUOTES)) {
+          db.createObjectStore(STORE_NAMES.QUOTES, { keyPath: 'id' });
+        }
 
-      // Notes store
-      if (!db.objectStoreNames.contains(STORE_NAMES.NOTES)) {
-        const noteStore = db.createObjectStore(STORE_NAMES.NOTES, { keyPath: 'id' });
-        noteStore.createIndex('by-pdfId', 'pdfId');
-        noteStore.createIndex('by-date', 'createdAt');
-      }
-    },
-  });
+        // Notes store
+        if (!db.objectStoreNames.contains(STORE_NAMES.NOTES)) {
+          db.createObjectStore(STORE_NAMES.NOTES, { keyPath: 'id' });
+        }
+      },
+    });
 
-  return dbInstance;
+    return dbInstance;
+  } catch (err) {
+    console.error('Failed to open database:', err);
+    throw err;
+  }
 }
 
 // Document operations
 export async function saveDocument(doc: PDFDocument): Promise<void> {
   const db = await getDB();
-  await db.put(STORE_NAMES.DOCUMENTS, doc);
+  // Convert dates to ISO strings for storage
+  const storable = {
+    ...doc,
+    lastOpened: doc.lastOpened instanceof Date ? doc.lastOpened.toISOString() : doc.lastOpened,
+    createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
+  };
+  await db.put(STORE_NAMES.DOCUMENTS, storable);
 }
 
 export async function getDocument(id: string): Promise<PDFDocument | undefined> {
   const db = await getDB();
-  return db.get(STORE_NAMES.DOCUMENTS, id);
+  const doc = await db.get(STORE_NAMES.DOCUMENTS, id);
+  if (doc) {
+    return {
+      ...doc,
+      lastOpened: new Date(doc.lastOpened),
+      createdAt: new Date(doc.createdAt),
+    };
+  }
+  return undefined;
 }
 
 export async function getAllDocuments(): Promise<PDFDocument[]> {
   const db = await getDB();
-  const docs = await db.getAllFromIndex(STORE_NAMES.DOCUMENTS, 'by-lastOpened');
-  return docs.reverse(); // Most recent first
+  const docs = await db.getAll(STORE_NAMES.DOCUMENTS);
+  // Convert dates and sort by lastOpened
+  return docs
+    .map((doc) => ({
+      ...doc,
+      lastOpened: new Date(doc.lastOpened),
+      createdAt: new Date(doc.createdAt),
+    }))
+    .sort((a, b) => b.lastOpened.getTime() - a.lastOpened.getTime());
 }
 
 export async function deleteDocument(id: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(
-    [STORE_NAMES.DOCUMENTS, STORE_NAMES.FILES, STORE_NAMES.HIGHLIGHTS, STORE_NAMES.QUOTES, STORE_NAMES.NOTES],
-    'readwrite'
-  );
-
+  
   // Delete document and file
-  await tx.objectStore(STORE_NAMES.DOCUMENTS).delete(id);
-  await tx.objectStore(STORE_NAMES.FILES).delete(id);
+  await db.delete(STORE_NAMES.DOCUMENTS, id);
+  await db.delete(STORE_NAMES.FILES, id);
 
   // Delete associated highlights
-  const highlightIndex = tx.objectStore(STORE_NAMES.HIGHLIGHTS).index('by-pdfId');
-  let highlightCursor = await highlightIndex.openCursor(id);
-  while (highlightCursor) {
-    await highlightCursor.delete();
-    highlightCursor = await highlightCursor.continue();
+  const highlights = await db.getAll(STORE_NAMES.HIGHLIGHTS);
+  for (const h of highlights) {
+    if (h.pdfId === id) {
+      await db.delete(STORE_NAMES.HIGHLIGHTS, h.id);
+    }
   }
 
   // Delete associated quotes
-  const quoteIndex = tx.objectStore(STORE_NAMES.QUOTES).index('by-pdfId');
-  let quoteCursor = await quoteIndex.openCursor(id);
-  while (quoteCursor) {
-    await quoteCursor.delete();
-    quoteCursor = await quoteCursor.continue();
+  const quotes = await db.getAll(STORE_NAMES.QUOTES);
+  for (const q of quotes) {
+    if (q.pdfId === id) {
+      await db.delete(STORE_NAMES.QUOTES, q.id);
+    }
   }
 
   // Delete associated notes
-  const noteIndex = tx.objectStore(STORE_NAMES.NOTES).index('by-pdfId');
-  let noteCursor = await noteIndex.openCursor(id);
-  while (noteCursor) {
-    await noteCursor.delete();
-    noteCursor = await noteCursor.continue();
+  const notes = await db.getAll(STORE_NAMES.NOTES);
+  for (const n of notes) {
+    if (n.pdfId === id) {
+      await db.delete(STORE_NAMES.NOTES, n.id);
+    }
   }
-
-  await tx.done;
 }
 
 // File operations
@@ -150,17 +136,27 @@ export async function getFile(id: string): Promise<PDFFile | undefined> {
 // Highlight operations
 export async function saveHighlight(highlight: Highlight): Promise<void> {
   const db = await getDB();
-  await db.put(STORE_NAMES.HIGHLIGHTS, highlight);
+  const storable = {
+    ...highlight,
+    createdAt: highlight.createdAt instanceof Date ? highlight.createdAt.toISOString() : highlight.createdAt,
+  };
+  await db.put(STORE_NAMES.HIGHLIGHTS, storable);
 }
 
 export async function getHighlightsByPdf(pdfId: string): Promise<Highlight[]> {
   const db = await getDB();
-  return db.getAllFromIndex(STORE_NAMES.HIGHLIGHTS, 'by-pdfId', pdfId);
+  const all = await db.getAll(STORE_NAMES.HIGHLIGHTS);
+  return all
+    .filter((h) => h.pdfId === pdfId)
+    .map((h) => ({
+      ...h,
+      createdAt: new Date(h.createdAt),
+    }));
 }
 
 export async function getHighlightsByPage(pdfId: string, pageNumber: number): Promise<Highlight[]> {
-  const db = await getDB();
-  return db.getAllFromIndex(STORE_NAMES.HIGHLIGHTS, 'by-page', [pdfId, pageNumber]);
+  const highlights = await getHighlightsByPdf(pdfId);
+  return highlights.filter((h) => h.pageNumber === pageNumber);
 }
 
 export async function deleteHighlight(id: string): Promise<void> {
@@ -171,18 +167,33 @@ export async function deleteHighlight(id: string): Promise<void> {
 // Quote operations
 export async function saveQuote(quote: Quote): Promise<void> {
   const db = await getDB();
-  await db.put(STORE_NAMES.QUOTES, quote);
+  const storable = {
+    ...quote,
+    createdAt: quote.createdAt instanceof Date ? quote.createdAt.toISOString() : quote.createdAt,
+  };
+  await db.put(STORE_NAMES.QUOTES, storable);
 }
 
 export async function getQuotesByPdf(pdfId: string): Promise<Quote[]> {
   const db = await getDB();
-  return db.getAllFromIndex(STORE_NAMES.QUOTES, 'by-pdfId', pdfId);
+  const all = await db.getAll(STORE_NAMES.QUOTES);
+  return all
+    .filter((q) => q.pdfId === pdfId)
+    .map((q) => ({
+      ...q,
+      createdAt: new Date(q.createdAt),
+    }));
 }
 
 export async function getAllQuotes(): Promise<Quote[]> {
   const db = await getDB();
-  const quotes = await db.getAllFromIndex(STORE_NAMES.QUOTES, 'by-date');
-  return quotes.reverse();
+  const all = await db.getAll(STORE_NAMES.QUOTES);
+  return all
+    .map((q) => ({
+      ...q,
+      createdAt: new Date(q.createdAt),
+    }))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function deleteQuote(id: string): Promise<void> {
@@ -193,18 +204,36 @@ export async function deleteQuote(id: string): Promise<void> {
 // Note operations
 export async function saveNote(note: Note): Promise<void> {
   const db = await getDB();
-  await db.put(STORE_NAMES.NOTES, note);
+  const storable = {
+    ...note,
+    createdAt: note.createdAt instanceof Date ? note.createdAt.toISOString() : note.createdAt,
+    updatedAt: note.updatedAt instanceof Date ? note.updatedAt.toISOString() : note.updatedAt,
+  };
+  await db.put(STORE_NAMES.NOTES, storable);
 }
 
 export async function getNotesByPdf(pdfId: string): Promise<Note[]> {
   const db = await getDB();
-  return db.getAllFromIndex(STORE_NAMES.NOTES, 'by-pdfId', pdfId);
+  const all = await db.getAll(STORE_NAMES.NOTES);
+  return all
+    .filter((n) => n.pdfId === pdfId)
+    .map((n) => ({
+      ...n,
+      createdAt: new Date(n.createdAt),
+      updatedAt: new Date(n.updatedAt),
+    }));
 }
 
 export async function getAllNotes(): Promise<Note[]> {
   const db = await getDB();
-  const notes = await db.getAllFromIndex(STORE_NAMES.NOTES, 'by-date');
-  return notes.reverse();
+  const all = await db.getAll(STORE_NAMES.NOTES);
+  return all
+    .map((n) => ({
+      ...n,
+      createdAt: new Date(n.createdAt),
+      updatedAt: new Date(n.updatedAt),
+    }))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function deleteNote(id: string): Promise<void> {
@@ -218,12 +247,11 @@ export async function updateReadingProgress(
   currentPage: number,
   scrollPosition: number
 ): Promise<void> {
-  const db = await getDB();
-  const doc = await db.get(STORE_NAMES.DOCUMENTS, pdfId);
+  const doc = await getDocument(pdfId);
   if (doc) {
     doc.currentPage = currentPage;
     doc.scrollPosition = scrollPosition;
     doc.lastOpened = new Date();
-    await db.put(STORE_NAMES.DOCUMENTS, doc);
+    await saveDocument(doc);
   }
 }
