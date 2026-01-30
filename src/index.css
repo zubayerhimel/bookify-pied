@@ -2,95 +2,148 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Kindle-Inspired PDF Reader Design System */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light Mode - Warm, clean reading surface */
+    --background: 40 33% 98%;
+    --foreground: 30 10% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 40 25% 96%;
+    --card-foreground: 30 10% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 40 33% 98%;
+    --popover-foreground: 30 10% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary - Warm amber accent */
+    --primary: 32 95% 44%;
+    --primary-foreground: 40 33% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Soft warm gray */
+    --secondary: 35 20% 90%;
+    --secondary-foreground: 30 10% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 35 15% 92%;
+    --muted-foreground: 30 8% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 32 80% 92%;
+    --accent-foreground: 32 95% 35%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 35 20% 88%;
+    --input: 35 20% 88%;
+    --ring: 32 95% 44%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Reading-specific tokens */
+    --reading-bg: 40 33% 98%;
+    --reading-text: 30 10% 15%;
+    --reading-highlight: 48 100% 70%;
+    --reading-highlight-green: 142 60% 75%;
+    --reading-highlight-blue: 210 80% 80%;
+    --reading-highlight-pink: 330 80% 85%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Typography */
+    --font-reading: 'Crimson Pro', Georgia, serif;
+    --font-ui: 'Inter', system-ui, sans-serif;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Shadows */
+    --shadow-soft: 0 2px 8px -2px hsl(30 10% 15% / 0.08);
+    --shadow-medium: 0 4px 16px -4px hsl(30 10% 15% / 0.12);
+    --shadow-book: 0 10px 40px -10px hsl(30 10% 15% / 0.2), 
+                   0 2px 8px -2px hsl(30 10% 15% / 0.1);
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar tokens */
+    --sidebar-background: 35 20% 95%;
+    --sidebar-foreground: 30 10% 25%;
+    --sidebar-primary: 32 95% 44%;
+    --sidebar-primary-foreground: 40 33% 98%;
+    --sidebar-accent: 35 15% 90%;
+    --sidebar-accent-foreground: 30 10% 25%;
+    --sidebar-border: 35 20% 88%;
+    --sidebar-ring: 32 95% 44%;
   }
 
+  /* Sepia Mode - Classic book paper feel */
+  .sepia {
+    --background: 39 45% 92%;
+    --foreground: 28 25% 18%;
+
+    --card: 39 40% 88%;
+    --card-foreground: 28 25% 18%;
+
+    --popover: 39 45% 92%;
+    --popover-foreground: 28 25% 18%;
+
+    --secondary: 38 35% 85%;
+    --secondary-foreground: 28 25% 25%;
+
+    --muted: 38 30% 87%;
+    --muted-foreground: 28 15% 40%;
+
+    --accent: 32 70% 88%;
+    --accent-foreground: 32 80% 30%;
+
+    --border: 38 30% 82%;
+    --input: 38 30% 82%;
+
+    --reading-bg: 39 45% 92%;
+    --reading-text: 28 25% 18%;
+
+    --sidebar-background: 38 35% 88%;
+    --sidebar-foreground: 28 25% 25%;
+  }
+
+  /* Dark Mode - Deep, comfortable night reading */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 8%;
+    --foreground: 40 15% 85%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 11%;
+    --card-foreground: 40 15% 85%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 40 15% 85%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 35 100% 50%;
+    --primary-foreground: 0 0% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 40 15% 80%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 40 10% 55%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 35 50% 20%;
+    --accent-foreground: 35 100% 60%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 35 100% 50%;
+
+    --reading-bg: 0 0% 8%;
+    --reading-text: 40 15% 85%;
+    --reading-highlight: 48 80% 35%;
+    --reading-highlight-green: 142 40% 30%;
+    --reading-highlight-blue: 210 50% 35%;
+    --reading-highlight-pink: 330 50% 40%;
+
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 40 15% 80%;
+    --sidebar-primary: 35 100% 50%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 40 15% 80%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 35 100% 50%;
   }
 }
 
@@ -100,6 +153,183 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-ui);
+  }
+
+  /* Reading typography */
+  .font-reading {
+    font-family: var(--font-reading);
+  }
+
+  .font-ui {
+    font-family: var(--font-ui);
+  }
+}
+
+@layer components {
+  /* Book-like card styling */
+  .book-card {
+    @apply relative rounded-lg overflow-hidden transition-all duration-300;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .book-card:hover {
+    box-shadow: var(--shadow-book);
+    transform: translateY(-4px);
+  }
+
+  /* Reading highlight colors */
+  .highlight-yellow {
+    background-color: hsl(var(--reading-highlight));
+  }
+
+  .highlight-green {
+    background-color: hsl(var(--reading-highlight-green));
+  }
+
+  .highlight-blue {
+    background-color: hsl(var(--reading-highlight-blue));
+  }
+
+  .highlight-pink {
+    background-color: hsl(var(--reading-highlight-pink));
+  }
+
+  /* Floating toolbar animation */
+  .floating-toolbar {
+    @apply absolute z-50 flex items-center gap-1 px-2 py-1.5 rounded-lg;
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-medium);
+    animation: toolbar-enter 0.2s ease-out;
+  }
+
+  @keyframes toolbar-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* PDF page container */
+  .pdf-page {
+    @apply relative mx-auto;
+    box-shadow: var(--shadow-book);
+  }
+
+  /* Progress bar styling */
+  .reading-progress {
+    @apply h-1 rounded-full overflow-hidden;
+    background: hsl(var(--muted));
+  }
+
+  .reading-progress-bar {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  }
+
+  /* Smooth scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Reader toolbar auto-hide */
+  .reader-toolbar {
+    @apply transition-all duration-300;
+  }
+
+  .reader-toolbar.hidden-toolbar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-100%);
+  }
+
+  /* Mode switch button */
+  .mode-button {
+    @apply relative w-8 h-8 rounded-full border-2 transition-all duration-200;
+  }
+
+  .mode-button.active {
+    @apply ring-2 ring-primary ring-offset-2;
+  }
+
+  /* Library grid */
+  .library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .library-grid {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+  }
+}
+
+@layer utilities {
+  /* Fade animations */
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Scale animation */
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Page turn animation */
+  .page-turn {
+    animation: page-turn 0.4s ease-out;
+  }
+
+  @keyframes page-turn {
+    0% {
+      opacity: 0.5;
+      transform: translateX(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 }
