@@ -1,5 +1,4 @@
 import { useRef, useCallback, ChangeEvent } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, BookOpen, FileText, Clock, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/useLibrary';
@@ -57,11 +56,7 @@ export function Library() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8"
-      >
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-primary/10 rounded-xl">
             <BookOpen className="w-7 h-7 text-primary" />
@@ -91,32 +86,19 @@ export function Library() {
           className="hidden"
           onChange={handleFileChange}
         />
-      </motion.div>
+      </div>
 
       {/* Library Grid or Empty State */}
       {documents.length === 0 ? (
         <LibraryEmptyState onUploadClick={handleUploadClick} />
       ) : (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="library-grid"
-        >
-          <AnimatePresence mode="popLayout">
-            {documents.map((doc, index) => (
-              <motion.div
-                key={doc.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <LibraryCard document={doc} onOpen={handleOpenDocument} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        <div className="library-grid">
+          {documents.map((doc) => (
+            <div key={doc.id}>
+              <LibraryCard document={doc} onOpen={handleOpenDocument} />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

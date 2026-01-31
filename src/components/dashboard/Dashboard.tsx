@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Quote as QuoteIcon,
@@ -131,26 +130,17 @@ export function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
+      <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2">
           Quotes & Notes
         </h1>
         <p className="text-muted-foreground">
           All your saved quotes and notes from your library
         </p>
-      </motion.div>
+      </div>
 
       {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-3 mb-6"
-      >
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -174,7 +164,7 @@ export function Dashboard() {
             ))}
           </SelectContent>
         </Select>
-      </motion.div>
+      </div>
 
       {/* Tabs */}
       <Tabs defaultValue="quotes" className="w-full">
@@ -190,122 +180,110 @@ export function Dashboard() {
         </TabsList>
 
         <TabsContent value="quotes">
-          <AnimatePresence mode="popLayout">
-            {filteredQuotes.length === 0 ? (
-              <EmptyState type="quotes" />
-            ) : (
-              <div className="space-y-4">
-                {filteredQuotes.map((quote, index) => (
-                  <motion.div
-                    key={quote.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group bg-card border rounded-xl p-4 shadow-soft hover:shadow-medium transition-shadow"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <blockquote className="font-reading text-lg text-foreground leading-relaxed border-l-4 border-primary/30 pl-4 italic">
-                          "{quote.text}"
-                        </blockquote>
-                        <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <FileText className="w-3.5 h-3.5" />
-                            {getDocumentTitle(quote.pdfId)}
-                          </span>
-                          <span>Page {quote.pageNumber}</span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true })}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleNavigateToPage(quote.pdfId, quote.pageNumber)}
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteItem({ type: 'quote', id: quote.id })}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+          {filteredQuotes.length === 0 ? (
+            <EmptyState type="quotes" />
+          ) : (
+            <div className="space-y-4">
+              {filteredQuotes.map((quote) => (
+                <div
+                  key={quote.id}
+                  className="group bg-card border rounded-xl p-4 shadow-soft hover:shadow-medium transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <blockquote className="font-reading text-lg text-foreground leading-relaxed border-l-4 border-primary/30 pl-4 italic">
+                        "{quote.text}"
+                      </blockquote>
+                      <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-3.5 h-3.5" />
+                          {getDocumentTitle(quote.pdfId)}
+                        </span>
+                        <span>Page {quote.pageNumber}</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true })}
+                        </span>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </AnimatePresence>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleNavigateToPage(quote.pdfId, quote.pageNumber)}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteItem({ type: 'quote', id: quote.id })}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="notes">
-          <AnimatePresence mode="popLayout">
-            {filteredNotes.length === 0 ? (
-              <EmptyState type="notes" />
-            ) : (
-              <div className="space-y-4">
-                {filteredNotes.map((note, index) => (
-                  <motion.div
-                    key={note.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group bg-card border rounded-xl p-4 shadow-soft hover:shadow-medium transition-shadow"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        {note.linkedText && (
-                          <p className="text-sm text-muted-foreground italic mb-2 line-clamp-2">
-                            On: "{note.linkedText}"
-                          </p>
-                        )}
-                        <p className="text-foreground">{note.content}</p>
-                        <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <FileText className="w-3.5 h-3.5" />
-                            {getDocumentTitle(note.pdfId)}
-                          </span>
-                          <span>Page {note.pageNumber}</span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleNavigateToPage(note.pdfId, note.pageNumber)}
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteItem({ type: 'note', id: note.id })}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+          {filteredNotes.length === 0 ? (
+            <EmptyState type="notes" />
+          ) : (
+            <div className="space-y-4">
+              {filteredNotes.map((note) => (
+                <div
+                  key={note.id}
+                  className="group bg-card border rounded-xl p-4 shadow-soft hover:shadow-medium transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      {note.linkedText && (
+                        <p className="text-sm text-muted-foreground italic mb-2 line-clamp-2">
+                          On: "{note.linkedText}"
+                        </p>
+                      )}
+                      <p className="text-foreground">{note.content}</p>
+                      <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-3.5 h-3.5" />
+                          {getDocumentTitle(note.pdfId)}
+                        </span>
+                        <span>Page {note.pageNumber}</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
+                        </span>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </AnimatePresence>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleNavigateToPage(note.pdfId, note.pageNumber)}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteItem({ type: 'note', id: note.id })}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -338,11 +316,7 @@ export function Dashboard() {
 function EmptyState({ type }: { type: 'quotes' | 'notes' }) {
   const Icon = type === 'quotes' ? QuoteIcon : StickyNote;
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center py-16 text-center"
-    >
+    <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
         <Icon className="w-8 h-8 text-muted-foreground" />
       </div>
@@ -354,6 +328,6 @@ function EmptyState({ type }: { type: 'quotes' | 'notes' }) {
           ? 'Select text while reading and save it as a quote to see it here.'
           : 'Add notes to passages while reading to see them here.'}
       </p>
-    </motion.div>
+    </div>
   );
 }
