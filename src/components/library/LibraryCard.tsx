@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { MoreVertical, Pencil, Trash2, Clock, FileText } from 'lucide-react';
 import {
   DropdownMenu,
@@ -64,9 +63,8 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
 
   return (
     <>
-      <motion.div
-        whileHover={{ y: -4 }}
-        className="book-card bg-card cursor-pointer group"
+      <div
+        className="book-card bg-card cursor-pointer group hover:-translate-y-1 transition-transform duration-200"
         onClick={() => onOpen(doc)}
       >
         {/* Cover Thumbnail */}
@@ -146,7 +144,7 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Rename Dialog */}
       <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>

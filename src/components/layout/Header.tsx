@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, Quote, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -62,12 +61,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <motion.nav
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="sm:hidden pb-4"
-          >
+          <nav className="sm:hidden pb-4">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -86,7 +80,7 @@ export function Header() {
                 </Link>
               );
             })}
-          </motion.nav>
+          </nav>
         )}
       </div>
     </header>

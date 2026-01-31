@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   ChevronLeft,
@@ -225,193 +224,186 @@ export function PDFReader() {
   if (!isReaderOpen) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-background"
-        onMouseMove={handleMouseMove}
+    <div
+      className="fixed inset-0 z-50 bg-background"
+      onMouseMove={handleMouseMove}
+    >
+      {/* Top Toolbar */}
+      <div
+        className={cn(
+          'reader-toolbar fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-soft px-4 py-2 transition-opacity duration-200',
+          !showToolbar && 'opacity-0 pointer-events-none'
+        )}
       >
-        {/* Top Toolbar */}
-        <motion.div
-          className={cn(
-            'reader-toolbar fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-soft px-4 py-2',
-            !showToolbar && 'hidden-toolbar'
-          )}
-        >
-          <div className="flex items-center justify-between max-w-6xl mx-auto">
-            {/* Left: Close & Title */}
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={closeReader}>
-                <X className="w-5 h-5" />
-              </Button>
-              <h2 className="font-medium text-foreground truncate max-w-[200px] sm:max-w-[300px]">
-                {currentDocument?.title}
-              </h2>
-            </div>
-
-            {/* Center: Page Navigation */}
-            <div className="hidden sm:flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-              <span className="text-sm text-muted-foreground min-w-[100px] text-center">
-                Page {currentPage} of {numPages}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
-                disabled={currentPage >= numPages}
-              >
-                <ChevronRight className="w-5 h-5" />
-              </Button>
-            </div>
-
-            {/* Right: Controls */}
-            <div className="flex items-center gap-1">
-              {/* Reading Mode Toggle */}
-              <div className="flex items-center border rounded-full p-1 gap-0.5">
-                {(['light', 'sepia', 'dark'] as ReadingMode[]).map((m) => {
-                  const Icon = modeIcons[m];
-                  return (
-                    <button
-                      key={m}
-                      onClick={() => setMode(m)}
-                      className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
-                        mode === m
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Zoom Controls */}
-              <div className="hidden md:flex items-center gap-1 ml-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setScale((s) => Math.max(0.5, s - 0.1));
-                    setFitMode('custom');
-                  }}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground min-w-[50px] text-center">
-                  {Math.round(scale * 100)}%
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setScale((s) => Math.min(2, s + 0.1));
-                    setFitMode('custom');
-                  }}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          {/* Left: Close & Title */}
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={closeReader}>
+              <X className="w-5 h-5" />
+            </Button>
+            <h2 className="font-medium text-foreground truncate max-w-[200px] sm:max-w-[300px]">
+              {currentDocument?.title}
+            </h2>
           </div>
-        </motion.div>
 
-        {/* Progress Bar */}
-        <div className="fixed top-[57px] left-0 right-0 z-40 h-1 bg-muted">
-          <motion.div
-            className="h-full bg-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPercent}%` }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
-
-        {/* PDF Container */}
-        <div
-          ref={containerRef}
-          className="h-full pt-16 pb-20 overflow-auto custom-scrollbar"
-        >
-          <div className="flex justify-center py-8 px-4 min-h-full">
-            {pdfData && (
-              <Document
-                file={{ data: pdfData }}
-                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                loading={
-                  <div className="flex items-center justify-center h-[600px]">
-                    <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                  </div>
-                }
-              >
-                <div ref={pageRef} className="pdf-page relative">
-                  <Page
-                    pageNumber={currentPage}
-                    scale={fitMode === 'width' ? containerWidth / 612 : scale}
-                    className="page-turn"
-                    renderTextLayer={true}
-                    renderAnnotationLayer={true}
-                  />
-                  <PageHighlights highlights={pageHighlights} />
-                </div>
-              </Document>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom Navigation (Mobile) */}
-        <motion.div
-          className={cn(
-            'reader-toolbar fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t shadow-soft px-4 py-3 sm:hidden',
-            !showToolbar && 'hidden-toolbar'
-          )}
-        >
-          <div className="flex items-center justify-between">
+          {/* Center: Page Navigation */}
+          <div className="hidden sm:flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-5 h-5" />
             </Button>
-            <div className="flex flex-col items-center">
-              <span className="text-sm font-medium">
-                {currentPage} / {numPages}
-              </span>
-              <span className="text-xs text-muted-foreground">{progressPercent}%</span>
-            </div>
+            <span className="text-sm text-muted-foreground min-w-[100px] text-center">
+              Page {currentPage} of {numPages}
+            </span>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
               disabled={currentPage >= numPages}
             >
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-5 h-5" />
             </Button>
           </div>
-        </motion.div>
 
-        {/* Selection Toolbar */}
-        {selection && (
-          <SelectionToolbar
-            position={selection.position}
-            onHighlight={handleHighlight}
-            onSaveQuote={handleSaveQuote}
-            onAddNote={handleAddNote}
-            onClose={() => setSelection(null)}
-          />
+          {/* Right: Controls */}
+          <div className="flex items-center gap-1">
+            {/* Reading Mode Toggle */}
+            <div className="flex items-center border rounded-full p-1 gap-0.5">
+              {(['light', 'sepia', 'dark'] as ReadingMode[]).map((m) => {
+                const Icon = modeIcons[m];
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={cn(
+                      'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
+                      mode === m
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Zoom Controls */}
+            <div className="hidden md:flex items-center gap-1 ml-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setScale((s) => Math.max(0.5, s - 0.1));
+                  setFitMode('custom');
+                }}
+              >
+                <Minus className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground min-w-[50px] text-center">
+                {Math.round(scale * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setScale((s) => Math.min(2, s + 0.1));
+                  setFitMode('custom');
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="fixed top-[57px] left-0 right-0 z-40 h-1 bg-muted">
+        <div
+          className="h-full bg-primary transition-all duration-300"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      {/* PDF Container */}
+      <div
+        ref={containerRef}
+        className="h-full pt-16 pb-20 overflow-auto custom-scrollbar"
+      >
+        <div className="flex justify-center py-8 px-4 min-h-full">
+          {pdfData && (
+            <Document
+              file={{ data: pdfData }}
+              onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+              loading={
+                <div className="flex items-center justify-center h-[600px]">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                </div>
+              }
+            >
+              <div ref={pageRef} className="pdf-page relative">
+                <Page
+                  pageNumber={currentPage}
+                  scale={fitMode === 'width' ? containerWidth / 612 : scale}
+                  className="page-turn"
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                />
+                <PageHighlights highlights={pageHighlights} />
+              </div>
+            </Document>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Navigation (Mobile) */}
+      <div
+        className={cn(
+          'reader-toolbar fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t shadow-soft px-4 py-3 sm:hidden transition-opacity duration-200',
+          !showToolbar && 'opacity-0 pointer-events-none'
         )}
-      </motion.div>
-    </AnimatePresence>
+      >
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </Button>
+          <div className="flex flex-col items-center">
+            <span className="text-sm font-medium">
+              {currentPage} / {numPages}
+            </span>
+            <span className="text-xs text-muted-foreground">{progressPercent}%</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+            disabled={currentPage >= numPages}
+          >
+            <ChevronRight className="w-6 h-6" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Selection Toolbar */}
+      {selection && (
+        <SelectionToolbar
+          position={selection.position}
+          onHighlight={handleHighlight}
+          onSaveQuote={handleSaveQuote}
+          onAddNote={handleAddNote}
+          onClose={() => setSelection(null)}
+        />
+      )}
+    </div>
   );
 }
