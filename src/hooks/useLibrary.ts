@@ -5,7 +5,7 @@ import { PDFDocument } from '@/lib/db/types';
 import {
   getAllDocuments,
   saveDocument,
-  saveFile,
+  saveDocumentWithFile,
   deleteDocument as dbDeleteDocument,
   getDocument,
 } from '@/lib/db/database';
@@ -16,6 +16,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export function useLibrary() {
   const [documents, setDocuments] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadDocuments = useCallback(async () => {
@@ -36,9 +37,10 @@ export function useLibrary() {
     loadDocuments();
   }, [loadDocuments]);
 
-  const generateThumbnail = async (pdfData: ArrayBuffer): Promise<string> => {
+  const generateThumbnail = async (
+    pdf: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']>
+  ): Promise<string> => {
     try {
-      const pdf = await pdfjs.getDocument({ data: pdfData }).promise;
       const page = await pdf.getPage(1);
       
       const scale = 0.5;
@@ -65,12 +67,15 @@ export function useLibrary() {
   };
 
   const uploadDocument = useCallback(async (file: File): Promise<PDFDocument | null> => {
+    const objectUrl = URL.createObjectURL(file);
+    let pdf: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']> | null = null;
+
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      setUploading(true);
+      setError(null);
+      pdf = await pdfjs.getDocument({ url: objectUrl }).promise;
       const totalPages = pdf.numPages;
-      
-      const thumbnail = await generateThumbnail(arrayBuffer);
+      const thumbnail = await generateThumbnail(pdf);
       
       const id = uuidv4();
       const now = new Date();
@@ -88,16 +93,25 @@ export function useLibrary() {
         coverThumbnail: thumbnail,
       };
       
-      // Save document metadata and file separately
-      await saveDocument(doc);
-      await saveFile({ id, data: arrayBuffer });
+      await saveDocumentWithFile(doc, { id, data: file });
       
       setDocuments(prev => [doc, ...prev]);
       return doc;
     } catch (err) {
       console.error('Error uploading document:', err);
-      setError('Failed to upload PDF');
+      setError(
+        err instanceof DOMException && err.name === 'QuotaExceededError'
+          ? 'Not enough browser storage is available for this PDF.'
+          : 'Failed to upload PDF.'
+      );
       return null;
+    } finally {
+      try {
+        await pdf?.destroy();
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        setUploading(false);
+      }
     }
   }, []);
 
@@ -135,6 +149,7 @@ export function useLibrary() {
   return {
     documents,
     loading,
+    uploading,
     error,
     uploadDocument,
     renameDocument,

@@ -36,7 +36,7 @@ export function PDFReader() {
     currentDocument?.id ?? null
   );
 
-  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  const [pdfData, setPdfData] = useState<Blob | ArrayBuffer | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1);
@@ -55,17 +55,27 @@ export function PDFReader() {
 
   // Load PDF file
   useEffect(() => {
-    if (!currentDocument) return;
+    if (!currentDocument) {
+      setPdfData(null);
+      return;
+    }
+
+    let cancelled = false;
 
     const loadPdf = async () => {
       const file = await getFile(currentDocument.id);
-      if (file) {
+      if (file && !cancelled) {
         setPdfData(file.data);
         setCurrentPage(currentDocument.currentPage || 1);
       }
     };
 
     loadPdf();
+
+    return () => {
+      cancelled = true;
+      setPdfData(null);
+    };
   }, [currentDocument]);
 
   // Update container width on resize
@@ -338,7 +348,7 @@ export function PDFReader() {
         <div className="flex justify-center py-8 px-4 min-h-full">
           {pdfData && (
             <Document
-              file={{ data: pdfData }}
+              file={pdfData}
               onLoadSuccess={({ numPages }) => setNumPages(numPages)}
               loading={
                 <div className="flex items-center justify-center h-[600px]">

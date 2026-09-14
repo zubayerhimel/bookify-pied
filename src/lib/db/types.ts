@@ -17,7 +17,7 @@ export interface PDFDocument {
 
 export interface PDFFile {
   id: string; // Same as PDFDocument id
-  data: ArrayBuffer;
+  data: Blob | ArrayBuffer;
 }
 
 export interface Highlight {

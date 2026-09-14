@@ -1,0 +1,4 @@
+allowBuilds:
+  '@swc/core': false
+  canvas: false
+  esbuild: false

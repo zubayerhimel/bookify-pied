@@ -64,6 +64,25 @@ export async function saveDocument(doc: PDFDocument): Promise<void> {
   await db.put(STORE_NAMES.DOCUMENTS, storable);
 }
 
+export async function saveDocumentWithFile(doc: PDFDocument, file: PDFFile): Promise<void> {
+  const db = await getDB();
+  const storable = {
+    ...doc,
+    lastOpened: doc.lastOpened instanceof Date ? doc.lastOpened.toISOString() : doc.lastOpened,
+    createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
+  };
+  const transaction = db.transaction(
+    [STORE_NAMES.DOCUMENTS, STORE_NAMES.FILES],
+    'readwrite'
+  );
+
+  await Promise.all([
+    transaction.objectStore(STORE_NAMES.DOCUMENTS).put(storable),
+    transaction.objectStore(STORE_NAMES.FILES).put(file),
+    transaction.done,
+  ]);
+}
+
 export async function getDocument(id: string): Promise<PDFDocument | undefined> {
   const db = await getDB();
   const doc = await db.get(STORE_NAMES.DOCUMENTS, id);

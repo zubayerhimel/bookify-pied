@@ -8,7 +8,7 @@ import { LibraryCard } from './LibraryCard';
 import { LibraryEmptyState } from './LibraryEmptyState';
 
 export function Library() {
-  const { documents, loading, uploadDocument } = useLibrary();
+  const { documents, loading, uploading, error, uploadDocument } = useLibrary();
   const { openReader } = useReader();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,11 +71,12 @@ export function Library() {
 
         <Button
           onClick={handleUploadClick}
+          disabled={uploading}
           className="gap-2 shadow-soft hover:shadow-medium transition-shadow"
           size="lg"
         >
-          <Upload className="w-4 h-4" />
-          Upload PDF
+          <Upload className={uploading ? 'w-4 h-4 animate-pulse' : 'w-4 h-4'} />
+          {uploading ? 'Adding PDF...' : 'Upload PDF'}
         </Button>
 
         <input
@@ -87,6 +88,12 @@ export function Library() {
           onChange={handleFileChange}
         />
       </div>
+
+      {error && (
+        <p role="alert" className="mb-6 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       {/* Library Grid or Empty State */}
       {documents.length === 0 ? (
