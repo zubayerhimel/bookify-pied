@@ -12,15 +12,26 @@ import {
   Coffee,
   Minus,
   Plus,
+  StickyNote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
 import { useReader } from '@/contexts/ReaderContext';
 import { useReadingMode, ReadingMode } from '@/hooks/useReadingMode';
 import { useAnnotations } from '@/hooks/useAnnotations';
 import { getFile, updateReadingProgress } from '@/lib/db/database';
 import { SelectionToolbar } from './SelectionToolbar';
 import { PageHighlights } from './PageHighlights';
+import { NotesPanel } from './NotesPanel';
 import { cn } from '@/lib/utils';
 
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -32,9 +43,17 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export function PDFReader() {
   const { currentDocument, isReaderOpen, closeReader } = useReader();
   const { mode, setMode } = useReadingMode();
-  const { highlights, addHighlight, addQuote, addNote, getHighlightsForPage } = useAnnotations(
-    currentDocument?.id ?? null
-  );
+  const {
+    highlights,
+    notes,
+    addHighlight,
+    addQuote,
+    addNote,
+    updateNote,
+    removeNote,
+    getHighlightsForPage,
+    getNotesForPage,
+  } = useAnnotations(currentDocument?.id ?? null);
 
   const [pdfData, setPdfData] = useState<Blob | ArrayBuffer | null>(null);
   const [numPages, setNumPages] = useState(0);
@@ -42,6 +61,9 @@ export function PDFReader() {
   const [scale, setScale] = useState(1);
   const [fitMode, setFitMode] = useState<'width' | 'page' | 'custom'>('width');
   const [showToolbar, setShowToolbar] = useState(true);
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [containerWidth, setContainerWidth] = useState(800);
   const [selection, setSelection] = useState<{
     text: string;
@@ -118,6 +140,14 @@ export function PDFReader() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isReaderOpen) return;
+
+      const target = e.target;
+      if (
+        target instanceof Element &&
+        target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+      ) {
+        return;
+      }
 
       switch (e.key) {
         case 'ArrowLeft':
@@ -222,8 +252,21 @@ export function PDFReader() {
     [selection, currentPage, addNote]
   );
 
+  const handleAddPageNote = useCallback(async () => {
+    const content = noteContent.trim();
+    if (!content) return;
+
+    const note = await addNote(currentPage, content);
+    if (note) {
+      setNoteContent('');
+      setShowNoteDialog(false);
+    }
+  }, [noteContent, currentPage, addNote]);
+
   const progressPercent = numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
   const pageHighlights = getHighlightsForPage(currentPage);
+  const currentPageNoteCount = getNotesForPage(currentPage).length;
+  const totalNoteCount = notes.length;
 
   const modeIcons: Record<ReadingMode, typeof Sun> = {
     light: Sun,
@@ -281,6 +324,34 @@ export function PDFReader() {
 
           {/* Right: Controls */}
           <div className="flex items-center gap-1">
+            <Button
+              variant={showNotesPanel ? 'secondary' : 'ghost'}
+              size="sm"
+              className="gap-2 relative"
+              onClick={() => setShowNotesPanel((open) => !open)}
+              aria-label={showNotesPanel ? 'Hide notes panel' : 'Show notes panel'}
+              aria-pressed={showNotesPanel}
+              title={showNotesPanel ? 'Hide notes' : 'Show notes'}
+            >
+              <span className="relative flex">
+                <StickyNote className="w-4 h-4" />
+                {currentPageNoteCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary"
+                    aria-hidden="true"
+                  />
+                )}
+              </span>
+              <span className="hidden sm:inline">Notes</span>
+              {totalNoteCount > 0 && (
+                <span className="hidden sm:inline text-xs text-muted-foreground">
+                  {currentPageNoteCount > 0
+                    ? `${currentPageNoteCount} on page`
+                    : `${totalNoteCount} total`}
+                </span>
+              )}
+            </Button>
+
             {/* Reading Mode Toggle */}
             <div className="flex items-center border rounded-full p-1 gap-0.5">
               {(['light', 'sepia', 'dark'] as ReadingMode[]).map((m) => {
@@ -343,7 +414,10 @@ export function PDFReader() {
       {/* PDF Container */}
       <div
         ref={containerRef}
-        className="h-full pt-16 pb-20 overflow-auto custom-scrollbar"
+        className={cn(
+          'h-full pt-16 pb-20 overflow-auto custom-scrollbar transition-[padding] duration-300',
+          showNotesPanel && 'lg:pr-[24rem]'
+        )}
       >
         <div className="flex justify-center py-8 px-4 min-h-full">
           {pdfData && (
@@ -414,6 +488,46 @@ export function PDFReader() {
           onClose={() => setSelection(null)}
         />
       )}
+
+      <NotesPanel
+        open={showNotesPanel}
+        currentPage={currentPage}
+        notes={notes}
+        onClose={() => setShowNotesPanel(false)}
+        onAddNote={() => setShowNoteDialog(true)}
+        onJumpToPage={(page) => setCurrentPage(Math.max(1, Math.min(numPages || page, page)))}
+        onUpdateNote={updateNote}
+        onDeleteNote={removeNote}
+      />
+
+      <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add note</DialogTitle>
+            <DialogDescription>
+              Save a note for page {currentPage} of {currentDocument?.title}.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noteContent}
+            onChange={(event) => setNoteContent(event.target.value)}
+            placeholder="Write your note..."
+            className="min-h-32 resize-none"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNoteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddPageNote} disabled={!noteContent.trim()}>
+              Save Note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
