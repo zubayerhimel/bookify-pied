@@ -279,6 +279,7 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
       <div
         className={cn(
           'reader-toolbar fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-soft px-4 py-2 transition-opacity duration-200',
+          showNotesPanel && 'lg:right-96',
           !showToolbar && 'opacity-0 pointer-events-none'
         )}
       >
@@ -398,7 +399,12 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
       </div>
 
       {/* Progress Bar */}
-      <div className="fixed top-[57px] left-0 right-0 z-40 h-1 bg-muted">
+      <div
+        className={cn(
+          'fixed top-[57px] left-0 right-0 z-40 h-1 bg-muted transition-[right] duration-300',
+          showNotesPanel && 'lg:right-96'
+        )}
+      >
         <div
           className="h-full bg-primary transition-all duration-300"
           style={{ width: `${progressPercent}%` }}
@@ -443,7 +449,8 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
       <div
         className={cn(
           'reader-toolbar fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t shadow-soft px-4 py-3 sm:hidden transition-opacity duration-200',
-          !showToolbar && 'opacity-0 pointer-events-none'
+          !showToolbar && 'opacity-0 pointer-events-none',
+          showNotesPanel && 'hidden'
         )}
       >
         <div className="flex items-center justify-between">

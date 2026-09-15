@@ -59,9 +59,10 @@ export function NotesPanel({
   return (
     <aside
       aria-label="Notes panel"
+      aria-hidden={!open}
       className={cn(
-        'reader-notes-panel fixed top-0 right-0 z-40 h-full w-full max-w-sm bg-card border-l shadow-medium transition-transform duration-300 flex flex-col',
-        open ? 'translate-x-0' : 'translate-x-full'
+        'reader-notes-panel fixed top-0 right-0 z-[60] h-full w-full max-w-sm bg-card border-l shadow-medium transition-transform duration-300 flex flex-col',
+        open ? 'translate-x-0' : 'translate-x-full pointer-events-none'
       )}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card/95 backdrop-blur-sm">
