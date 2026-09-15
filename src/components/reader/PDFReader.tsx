@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { useReader } from '@/contexts/ReaderContext';
+import { PDFDocument } from '@/lib/db/types';
 import { useReadingMode, ReadingMode } from '@/hooks/useReadingMode';
 import { useAnnotations } from '@/hooks/useAnnotations';
 import { getFile, updateReadingProgress } from '@/lib/db/database';
@@ -40,8 +40,13 @@ import 'react-pdf/dist/esm/Page/TextLayer.css';
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-export function PDFReader() {
-  const { currentDocument, isReaderOpen, closeReader } = useReader();
+interface PDFReaderProps {
+  document: PDFDocument;
+  initialPage?: number;
+  onClose: () => void;
+}
+
+export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProps) {
   const { mode, setMode } = useReadingMode();
   const {
     highlights,
@@ -53,7 +58,7 @@ export function PDFReader() {
     removeNote,
     getHighlightsForPage,
     getNotesForPage,
-  } = useAnnotations(currentDocument?.id ?? null);
+  } = useAnnotations(doc.id);
 
   const [pdfData, setPdfData] = useState<Blob | ArrayBuffer | null>(null);
   const [numPages, setNumPages] = useState(0);
@@ -77,18 +82,13 @@ export function PDFReader() {
 
   // Load PDF file
   useEffect(() => {
-    if (!currentDocument) {
-      setPdfData(null);
-      return;
-    }
-
     let cancelled = false;
 
     const loadPdf = async () => {
-      const file = await getFile(currentDocument.id);
+      const file = await getFile(doc.id);
       if (file && !cancelled) {
         setPdfData(file.data);
-        setCurrentPage(currentDocument.currentPage || 1);
+        setCurrentPage(initialPage ?? doc.currentPage ?? 1);
       }
     };
 
@@ -98,7 +98,7 @@ export function PDFReader() {
       cancelled = true;
       setPdfData(null);
     };
-  }, [currentDocument]);
+  }, [doc, initialPage]);
 
   // Update container width on resize
   useEffect(() => {
@@ -126,21 +126,17 @@ export function PDFReader() {
 
   // Save reading progress
   useEffect(() => {
-    if (!currentDocument) return;
-
     const saveProgress = () => {
-      updateReadingProgress(currentDocument.id, currentPage, 0);
+      updateReadingProgress(doc.id, currentPage, 0);
     };
 
     const debounced = setTimeout(saveProgress, 1000);
     return () => clearTimeout(debounced);
-  }, [currentDocument, currentPage]);
+  }, [doc.id, currentPage]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isReaderOpen) return;
-
       const target = e.target;
       if (
         target instanceof Element &&
@@ -161,7 +157,7 @@ export function PDFReader() {
           e.preventDefault();
           break;
         case 'Escape':
-          closeReader();
+          onClose();
           break;
         case '+':
         case '=':
@@ -177,7 +173,7 @@ export function PDFReader() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isReaderOpen, numPages, closeReader]);
+  }, [numPages, onClose]);
 
   // Handle text selection
   const handleTextSelection = useCallback(() => {
@@ -274,8 +270,6 @@ export function PDFReader() {
     dark: Moon,
   };
 
-  if (!isReaderOpen) return null;
-
   return (
     <div
       className="fixed inset-0 z-50 bg-background"
@@ -291,11 +285,11 @@ export function PDFReader() {
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           {/* Left: Close & Title */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={closeReader}>
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Back to library">
               <X className="w-5 h-5" />
             </Button>
             <h2 className="font-medium text-foreground truncate max-w-[200px] sm:max-w-[300px]">
-              {currentDocument?.title}
+              {doc.title}
             </h2>
           </div>
 
@@ -505,7 +499,7 @@ export function PDFReader() {
           <DialogHeader>
             <DialogTitle>Add note</DialogTitle>
             <DialogDescription>
-              Save a note for page {currentPage} of {currentDocument?.title}.
+              Save a note for page {currentPage} of {doc.title}.
             </DialogDescription>
           </DialogHeader>
           <Textarea

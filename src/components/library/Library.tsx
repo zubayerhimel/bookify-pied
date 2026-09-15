@@ -1,15 +1,15 @@
 import { useRef, useCallback, ChangeEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Upload, BookOpen, FileText, Clock, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/useLibrary';
-import { useReader } from '@/contexts/ReaderContext';
 import { PDFDocument } from '@/lib/db/types';
 import { LibraryCard } from './LibraryCard';
 import { LibraryEmptyState } from './LibraryEmptyState';
 
 export function Library() {
   const { documents, loading, uploading, error, uploadDocument } = useLibrary();
-  const { openReader } = useReader();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadClick = useCallback(() => {
@@ -37,9 +37,9 @@ export function Library() {
 
   const handleOpenDocument = useCallback(
     (doc: PDFDocument) => {
-      openReader(doc);
+      navigate(`/read/${doc.id}`);
     },
-    [openReader]
+    [navigate]
   );
 
   if (loading) {

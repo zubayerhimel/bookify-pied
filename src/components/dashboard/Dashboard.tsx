@@ -37,12 +37,11 @@ import {
   getAllDocuments,
   deleteQuote,
   deleteNote,
-  getDocument,
 } from '@/lib/db/database';
-import { useReader } from '@/contexts/ReaderContext';
+import { useNavigate } from 'react-router-dom';
 
 export function Dashboard() {
-  const { openReader } = useReader();
+  const navigate = useNavigate();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [documents, setDocuments] = useState<PDFDocument[]>([]);
@@ -98,13 +97,8 @@ export function Dashboard() {
     return doc?.title || 'Unknown Document';
   };
 
-  const handleNavigateToPage = async (pdfId: string, pageNumber: number) => {
-    const doc = await getDocument(pdfId);
-    if (doc) {
-      // Update the current page before opening
-      doc.currentPage = pageNumber;
-      openReader(doc);
-    }
+  const handleNavigateToPage = (pdfId: string, pageNumber: number) => {
+    navigate(`/read/${pdfId}?page=${pageNumber}`);
   };
 
   const handleDeleteConfirm = async () => {
