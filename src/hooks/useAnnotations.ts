@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Highlight, Quote, Note, HighlightColor, HighlightRect } from '@/lib/db/types';
+import type { Highlight, Quote, Note, HighlightColor, HighlightRect } from '@/lib/db/types';
 import {
   getHighlightsByPdf,
   saveHighlight,

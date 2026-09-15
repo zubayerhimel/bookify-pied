@@ -1,12 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 import {
   X,
   ChevronLeft,
   ChevronRight,
-  ZoomIn,
-  ZoomOut,
-  Maximize,
   Sun,
   Moon,
   Coffee,
@@ -23,10 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { PDFDocument } from '@/lib/db/types';
-import { useReadingMode, ReadingMode } from '@/hooks/useReadingMode';
+import type { PDFDocument } from '@/lib/db/types';
+import { useReadingMode, type ReadingMode } from '@/hooks/useReadingMode';
 import { useAnnotations } from '@/hooks/useAnnotations';
 import { getFile, updateReadingProgress } from '@/lib/db/database';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -34,11 +30,9 @@ import { PageHighlights } from './PageHighlights';
 import { NotesPanel } from './NotesPanel';
 import { cn } from '@/lib/utils';
 
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
-
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+import '@/lib/pdf-worker';
 
 interface PDFReaderProps {
   document: PDFDocument;
@@ -49,7 +43,6 @@ interface PDFReaderProps {
 export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProps) {
   const { mode, setMode } = useReadingMode();
   const {
-    highlights,
     notes,
     addHighlight,
     addQuote,
@@ -77,7 +70,7 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const toolbarTimeoutRef = useRef<NodeJS.Timeout>();
+  const toolbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pageRef = useRef<HTMLDivElement>(null);
 
   // Load PDF file
@@ -123,6 +116,11 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
       setShowToolbar(false);
     }, 3000);
   }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [handleMouseMove]);
 
   // Save reading progress
   useEffect(() => {
@@ -271,10 +269,7 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-background"
-      onMouseMove={handleMouseMove}
-    >
+    <div className="fixed inset-0 z-50 bg-background">
       {/* Top Toolbar */}
       <div
         className={cn(
@@ -353,6 +348,7 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
                 const Icon = modeIcons[m];
                 return (
                   <button
+                    type="button"
                     key={m}
                     onClick={() => setMode(m)}
                     className={cn(

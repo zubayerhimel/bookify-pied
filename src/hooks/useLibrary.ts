@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { pdfjs } from 'react-pdf';
-import { PDFDocument } from '@/lib/db/types';
+import type { PDFDocument } from '@/lib/db/types';
 import {
   getAllDocuments,
   saveDocument,
@@ -9,9 +9,7 @@ import {
   deleteDocument as dbDeleteDocument,
   getDocument,
 } from '@/lib/db/database';
-
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+import '@/lib/pdf-worker';
 
 export function useLibrary() {
   const [documents, setDocuments] = useState<PDFDocument[]>([]);
@@ -37,7 +35,7 @@ export function useLibrary() {
     loadDocuments();
   }, [loadDocuments]);
 
-  const generateThumbnail = async (
+  const generateThumbnail = useCallback(async (
     pdf: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']>
   ): Promise<string> => {
     try {
@@ -55,6 +53,7 @@ export function useLibrary() {
       canvas.width = viewport.width;
       
       await page.render({
+        canvas,
         canvasContext: context,
         viewport,
       }).promise;
@@ -64,16 +63,17 @@ export function useLibrary() {
       console.error('Error generating thumbnail:', err);
       return '';
     }
-  };
+  }, []);
 
   const uploadDocument = useCallback(async (file: File): Promise<PDFDocument | null> => {
     const objectUrl = URL.createObjectURL(file);
-    let pdf: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']> | null = null;
+    let loadingTask: ReturnType<typeof pdfjs.getDocument> | null = null;
 
     try {
       setUploading(true);
       setError(null);
-      pdf = await pdfjs.getDocument({ url: objectUrl }).promise;
+      loadingTask = pdfjs.getDocument({ url: objectUrl });
+      const pdf = await loadingTask.promise;
       const totalPages = pdf.numPages;
       const thumbnail = await generateThumbnail(pdf);
       
@@ -107,13 +107,13 @@ export function useLibrary() {
       return null;
     } finally {
       try {
-        await pdf?.destroy();
+        await loadingTask?.destroy();
       } finally {
         URL.revokeObjectURL(objectUrl);
         setUploading(false);
       }
     }
-  }, []);
+  }, [generateThumbnail]);
 
   const renameDocument = useCallback(async (id: string, newTitle: string): Promise<void> => {
     try {

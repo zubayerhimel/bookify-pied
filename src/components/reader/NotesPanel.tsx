@@ -3,7 +3,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { StickyNote, Trash2, Check, Pencil, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Note } from '@/lib/db/types';
+import type { Note } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
 
 interface NotesPanelProps {

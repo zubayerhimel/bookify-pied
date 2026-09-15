@@ -1,9 +1,9 @@
-import { useRef, useCallback, ChangeEvent } from 'react';
+import { useRef, useCallback, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, BookOpen, FileText, Clock, Percent } from 'lucide-react';
+import { Upload, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/useLibrary';
-import { PDFDocument } from '@/lib/db/types';
+import type { PDFDocument } from '@/lib/db/types';
 import { LibraryCard } from './LibraryCard';
 import { LibraryEmptyState } from './LibraryEmptyState';
 

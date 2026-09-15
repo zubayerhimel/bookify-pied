@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PDFReader } from '@/components/reader/PDFReader';
 import { Button } from '@/components/ui/button';
 import { getDocument } from '@/lib/db/database';
-import { PDFDocument } from '@/lib/db/types';
+import type { PDFDocument } from '@/lib/db/types';
 
 const ReaderPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,10 +27,7 @@ const ReaderPage = () => {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!id) {
-      setStatus('missing');
-      return;
-    }
+    if (!id) return;
 
     let cancelled = false;
 
@@ -69,7 +66,7 @@ const ReaderPage = () => {
     );
   }
 
-  if (status === 'missing' || !document) {
+  if (!id || status === 'missing' || !document) {
     return (
       <div className="container mx-auto px-4 py-16 max-w-xl text-center">
         <h1 className="text-2xl font-semibold text-foreground mb-2">PDF not found</h1>

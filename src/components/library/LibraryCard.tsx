@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PDFDocument } from '@/lib/db/types';
+import type { PDFDocument } from '@/lib/db/types';
 import { useLibrary } from '@/hooks/useLibrary';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -64,9 +64,15 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
   return (
     <>
       <div
-        className="book-card bg-card cursor-pointer group hover:-translate-y-1 transition-transform duration-200"
-        onClick={() => onOpen(doc)}
+        className="book-card relative bg-card cursor-pointer group hover:-translate-y-1 transition-transform duration-200"
       >
+        <button
+          type="button"
+          className="absolute inset-0 z-10"
+          onClick={() => onOpen(doc)}
+          aria-label={`Open ${doc.title}`}
+        />
+
         {/* Cover Thumbnail */}
         <div className="relative aspect-[3/4] bg-muted overflow-hidden">
           {doc.coverThumbnail ? (
@@ -95,7 +101,7 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
           )}
 
           {/* Menu Button */}
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button

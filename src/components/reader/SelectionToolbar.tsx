@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { Highlighter, Quote, StickyNote, X } from 'lucide-react';
+import { Quote, StickyNote, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { HighlightColor } from '@/lib/db/types';
+import type { HighlightColor } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
 
 interface SelectionToolbarProps {
@@ -81,6 +81,7 @@ export function SelectionToolbar({
           <div className="flex items-center gap-0.5 pr-2 border-r">
             {highlightColors.map(({ color, className, label }) => (
               <button
+                type="button"
                 key={color}
                 onClick={() => onHighlight(color)}
                 className={cn(

@@ -1,10 +1,10 @@
-import { openDB, IDBPDatabase } from 'idb';
+import { openDB, type IDBPDatabase } from 'idb';
 import {
-  PDFDocument,
-  PDFFile,
-  Highlight,
-  Quote,
-  Note,
+  type PDFDocument,
+  type PDFFile,
+  type Highlight,
+  type Quote,
+  type Note,
   DB_NAME,
   DB_VERSION,
   STORE_NAMES,

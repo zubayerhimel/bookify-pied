@@ -1,4 +1,4 @@
-import { Highlight } from '@/lib/db/types';
+import type { Highlight } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
 
 interface PageHighlightsProps {
@@ -18,9 +18,9 @@ export function PageHighlights({ highlights }: PageHighlightsProps) {
   return (
     <div className="absolute inset-0 pointer-events-none">
       {highlights.map((highlight) =>
-        highlight.rects.map((rect, index) => (
+        highlight.rects.map((rect) => (
           <div
-            key={`${highlight.id}-${index}`}
+            key={`${highlight.id}-${rect.x}-${rect.y}-${rect.width}-${rect.height}`}
             className={cn(
               'absolute rounded-sm mix-blend-multiply dark:mix-blend-screen transition-opacity',
               colorClasses[highlight.color] || colorClasses.yellow

@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Quote, Note, PDFDocument } from '@/lib/db/types';
+import type { Quote, Note, PDFDocument } from '@/lib/db/types';
 import {
   getAllQuotes,
   getAllNotes,
