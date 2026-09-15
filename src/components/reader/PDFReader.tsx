@@ -1,16 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Document, Page } from 'react-pdf';
 import {
-  X,
   ChevronLeft,
   ChevronRight,
-  Sun,
-  Moon,
   Coffee,
   Minus,
+  Moon,
   Plus,
   StickyNote,
+  Sun,
+  X,
 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Document, Page } from 'react-pdf';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,14 +21,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import type { PDFDocument } from '@/lib/db/types';
-import { useReadingMode, type ReadingMode } from '@/hooks/useReadingMode';
 import { useAnnotations } from '@/hooks/useAnnotations';
+import { type ReadingMode, useReadingMode } from '@/hooks/useReadingMode';
 import { getFile, updateReadingProgress } from '@/lib/db/database';
-import { SelectionToolbar } from './SelectionToolbar';
-import { PageHighlights } from './PageHighlights';
-import { NotesPanel } from './NotesPanel';
+import type { PDFDocument } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
+import { NotesPanel } from './NotesPanel';
+import { PageHighlights } from './PageHighlights';
+import { SelectionToolbar } from './SelectionToolbar';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -40,7 +40,11 @@ interface PDFReaderProps {
   onClose: () => void;
 }
 
-export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProps) {
+export function PDFReader({
+  document: doc,
+  initialPage,
+  onClose,
+}: PDFReaderProps) {
   const { mode, setMode } = useReadingMode();
   const {
     notes,
@@ -57,7 +61,6 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1);
-  const [fitMode, setFitMode] = useState<'width' | 'page' | 'custom'>('width');
   const [showToolbar, setShowToolbar] = useState(true);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [noteContent, setNoteContent] = useState('');
@@ -70,7 +73,9 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const toolbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const toolbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
   const pageRef = useRef<HTMLDivElement>(null);
 
   // Load PDF file
@@ -93,17 +98,27 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
     };
   }, [doc, initialPage]);
 
-  // Update container width on resize
+  // Keep the PDF fitted to the reader's content box as it resizes.
   useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth - 64);
+        const styles = getComputedStyle(containerRef.current);
+        const horizontalPadding =
+          Number.parseFloat(styles.paddingLeft) +
+          Number.parseFloat(styles.paddingRight);
+        setContainerWidth(
+          Math.max(
+            280,
+            containerRef.current.clientWidth - horizontalPadding - 32
+          )
+        );
       }
     };
 
     updateWidth();
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
+    const observer = new ResizeObserver(updateWidth);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, []);
 
   // Auto-hide toolbar
@@ -138,7 +153,9 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
       const target = e.target;
       if (
         target instanceof Element &&
-        target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+        target.closest(
+          'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
+        )
       ) {
         return;
       }
@@ -160,11 +177,9 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
         case '+':
         case '=':
           setScale((s) => Math.min(2, s + 0.1));
-          setFitMode('custom');
           break;
         case '-':
           setScale((s) => Math.max(0.5, s - 0.1));
-          setFitMode('custom');
           break;
       }
     };
@@ -257,7 +272,8 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
     }
   }, [noteContent, currentPage, addNote]);
 
-  const progressPercent = numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
+  const progressPercent =
+    numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
   const pageHighlights = getHighlightsForPage(currentPage);
   const currentPageNoteCount = getNotesForPage(currentPage).length;
   const totalNoteCount = notes.length;
@@ -281,7 +297,12 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           {/* Left: Close & Title */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Back to library">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="Back to library"
+            >
               <X className="w-5 h-5" />
             </Button>
             <h2 className="font-medium text-foreground truncate max-w-[200px] sm:max-w-[300px]">
@@ -319,7 +340,9 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
               size="sm"
               className="gap-2 relative"
               onClick={() => setShowNotesPanel((open) => !open)}
-              aria-label={showNotesPanel ? 'Hide notes panel' : 'Show notes panel'}
+              aria-label={
+                showNotesPanel ? 'Hide notes panel' : 'Show notes panel'
+              }
               aria-pressed={showNotesPanel}
               title={showNotesPanel ? 'Hide notes' : 'Show notes'}
             >
@@ -371,7 +394,6 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
                 size="icon"
                 onClick={() => {
                   setScale((s) => Math.max(0.5, s - 0.1));
-                  setFitMode('custom');
                 }}
               >
                 <Minus className="w-4 h-4" />
@@ -384,7 +406,6 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
                 size="icon"
                 onClick={() => {
                   setScale((s) => Math.min(2, s + 0.1));
-                  setFitMode('custom');
                 }}
               >
                 <Plus className="w-4 h-4" />
@@ -429,7 +450,7 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
               <div ref={pageRef} className="pdf-page relative">
                 <Page
                   pageNumber={currentPage}
-                  scale={fitMode === 'width' ? containerWidth / 612 : scale}
+                  width={containerWidth * scale}
                   className="page-turn"
                   renderTextLayer={true}
                   renderAnnotationLayer={true}
@@ -462,7 +483,9 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
             <span className="text-sm font-medium">
               {currentPage} / {numPages}
             </span>
-            <span className="text-xs text-muted-foreground">{progressPercent}%</span>
+            <span className="text-xs text-muted-foreground">
+              {progressPercent}%
+            </span>
           </div>
           <Button
             variant="ghost"
@@ -492,7 +515,9 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
         notes={notes}
         onClose={() => setShowNotesPanel(false)}
         onAddNote={() => setShowNoteDialog(true)}
-        onJumpToPage={(page) => setCurrentPage(Math.max(1, Math.min(numPages || page, page)))}
+        onJumpToPage={(page) =>
+          setCurrentPage(Math.max(1, Math.min(numPages || page, page)))
+        }
         onUpdateNote={updateNote}
         onDeleteNote={removeNote}
       />
@@ -513,10 +538,7 @@ export function PDFReader({ document: doc, initialPage, onClose }: PDFReaderProp
             autoFocus
           />
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowNoteDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowNoteDialog(false)}>
               Cancel
             </Button>
             <Button onClick={handleAddPageNote} disabled={!noteContent.trim()}>
