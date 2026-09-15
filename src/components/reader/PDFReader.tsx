@@ -9,7 +9,13 @@ import {
   Sun,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Document, Page } from 'react-pdf';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,7 +73,8 @@ export function PDFReader({
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [showNotesPanel, setShowNotesPanel] = useState(false);
-  const [containerWidth, setContainerWidth] = useState(800);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const [readyRenderKey, setReadyRenderKey] = useState<string | null>(null);
   const [selection, setSelection] = useState<{
     text: string;
     rects: DOMRect[];
@@ -139,20 +146,19 @@ export function PDFReader({
     };
   }, [doc, initialPage]);
 
-  // Keep the PDF fitted to the reader's content box as it resizes.
-  useEffect(() => {
+  // Measure before paint so the PDF never renders at a placeholder width.
+  useLayoutEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
         const styles = getComputedStyle(containerRef.current);
         const horizontalPadding =
           Number.parseFloat(styles.paddingLeft) +
           Number.parseFloat(styles.paddingRight);
-        setContainerWidth(
-          Math.max(
-            280,
-            containerRef.current.clientWidth - horizontalPadding - 32
-          )
+        const nextWidth = Math.max(
+          280,
+          containerRef.current.clientWidth - horizontalPadding - 32
         );
+        setContainerWidth((width) => (width === nextWidth ? width : nextWidth));
       }
     };
 
@@ -161,6 +167,11 @@ export function PDFReader({
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  const renderedPageWidth =
+    containerWidth === null ? null : containerWidth * scale;
+  const pageRenderKey = `${doc.id}-${currentPage}-${renderedPageWidth}`;
+  const isPageReady = readyRenderKey === pageRenderKey;
 
   // Auto-hide toolbar
   const handleMouseMove = useCallback(() => {
@@ -500,32 +511,45 @@ export function PDFReader({
       <div
         ref={containerRef}
         className={cn(
-          'h-full pt-16 pb-20 overflow-auto custom-scrollbar transition-[padding] duration-300',
+          'h-full pt-16 pb-20 overflow-x-auto overflow-y-scroll custom-scrollbar',
           showNotesPanel && 'lg:pr-[24rem]'
         )}
       >
-        <div className="flex justify-center py-8 px-4 min-h-full">
-          {pdfData && (
+        <div className="relative flex justify-center py-8 px-4 min-h-full">
+          {pdfData && renderedPageWidth !== null && (
             <Document
               file={pdfData}
               onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-              loading={
-                <div className="flex items-center justify-center h-[600px]">
-                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                </div>
-              }
+              loading={null}
             >
-              <div ref={pageRef} className="pdf-page relative">
+              <div
+                ref={pageRef}
+                className={cn(
+                  'pdf-page relative',
+                  isPageReady ? 'opacity-100' : 'opacity-0'
+                )}
+              >
                 <Page
+                  key={pageRenderKey}
                   pageNumber={currentPage}
-                  width={containerWidth * scale}
-                  className="page-turn"
+                  width={renderedPageWidth}
+                  loading={null}
+                  onRenderSuccess={() => setReadyRenderKey(pageRenderKey)}
                   renderTextLayer={true}
                   renderAnnotationLayer={true}
                 />
                 <PageHighlights highlights={pageHighlights} />
               </div>
             </Document>
+          )}
+          {!isPageReady && (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              role="status"
+              aria-label="Loading PDF page"
+            >
+              <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
           )}
         </div>
       </div>

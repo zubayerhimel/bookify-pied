@@ -412,21 +412,3 @@
     }
   }
 }
-
-@layer utilities {
-  /* Page turn animation */
-  .page-turn {
-    animation: page-turn 0.4s ease-out;
-  }
-
-  @keyframes page-turn {
-    0% {
-      opacity: 0.5;
-      transform: translateX(20px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-}

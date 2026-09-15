@@ -1,6 +1,6 @@
-import { useRef, useCallback, type ChangeEvent } from 'react';
+import { BookOpen, Upload } from 'lucide-react';
+import { type ChangeEvent, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/useLibrary';
 import type { PDFDocument } from '@/lib/db/types';
@@ -62,7 +62,9 @@ export function Library() {
             <BookOpen className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">My Library</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">
+              My Library
+            </h1>
             <p className="text-sm text-muted-foreground">
               {documents.length} {documents.length === 1 ? 'book' : 'books'}
             </p>

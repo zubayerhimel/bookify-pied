@@ -10,7 +10,9 @@ const ReaderPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [document, setDocument] = useState<PDFDocument | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>(
+    'loading'
+  );
 
   const pageParam = Number.parseInt(searchParams.get('page') ?? '', 10);
   const [initialPage] = useState(() =>
@@ -69,7 +71,9 @@ const ReaderPage = () => {
   if (!id || status === 'missing' || !document) {
     return (
       <div className="container mx-auto px-4 py-16 max-w-xl text-center">
-        <h1 className="text-2xl font-semibold text-foreground mb-2">PDF not found</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">
+          PDF not found
+        </h1>
         <p className="text-muted-foreground mb-6">
           This document is no longer in your library.
         </p>
@@ -78,7 +82,13 @@ const ReaderPage = () => {
     );
   }
 
-  return <PDFReader document={document} initialPage={initialPage} onClose={handleClose} />;
+  return (
+    <PDFReader
+      document={document}
+      initialPage={initialPage}
+      onClose={handleClose}
+    />
+  );
 };
 
 export default ReaderPage;
