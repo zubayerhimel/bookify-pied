@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAnnotations } from '@/hooks/useAnnotations';
 import { type ReadingMode, useReadingMode } from '@/hooks/useReadingMode';
@@ -60,6 +61,7 @@ export function PDFReader({
   const [pdfData, setPdfData] = useState<Blob | ArrayBuffer | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
   const [scale, setScale] = useState(1);
   const [showToolbar, setShowToolbar] = useState(true);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
@@ -76,7 +78,46 @@ export function PDFReader({
   const toolbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   );
+  const skipPageCommitRef = useRef(false);
   const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPageInput(String(currentPage));
+  }, [currentPage]);
+
+  const commitPageInput = useCallback(
+    (value: string) => {
+      const requestedPage = Number.parseInt(value, 10);
+      if (!Number.isFinite(requestedPage) || numPages < 1) {
+        setPageInput(String(currentPage));
+        return;
+      }
+
+      const nextPage = Math.min(numPages, Math.max(1, requestedPage));
+      setCurrentPage(nextPage);
+      setPageInput(String(nextPage));
+    },
+    [currentPage, numPages]
+  );
+
+  const handlePageInputKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        commitPageInput(event.currentTarget.value);
+        event.currentTarget.blur();
+      } else if (event.key === 'Escape') {
+        skipPageCommitRef.current = true;
+        setPageInput(String(currentPage));
+        event.currentTarget.blur();
+      }
+    },
+    [commitPageInput, currentPage]
+  );
+
+  const handlePageInputFocus = useCallback(() => {
+    setShowToolbar(true);
+    if (toolbarTimeoutRef.current) clearTimeout(toolbarTimeoutRef.current);
+  }, []);
 
   // Load PDF file
   useEffect(() => {
@@ -131,6 +172,18 @@ export function PDFReader({
       setShowToolbar(false);
     }, 3000);
   }, []);
+
+  const handlePageInputBlur = useCallback(
+    (event: React.FocusEvent<HTMLInputElement>) => {
+      if (skipPageCommitRef.current) {
+        skipPageCommitRef.current = false;
+      } else {
+        commitPageInput(event.currentTarget.value);
+      }
+      handleMouseMove();
+    },
+    [commitPageInput, handleMouseMove]
+  );
 
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
@@ -320,9 +373,24 @@ export function PDFReader({
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
-            <span className="text-sm text-muted-foreground min-w-[100px] text-center">
-              Page {currentPage} of {numPages}
-            </span>
+            <div className="flex min-w-[118px] items-center justify-center gap-1.5 text-sm text-muted-foreground">
+              <span>Page</span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={numPages || 1}
+                value={pageInput}
+                onChange={(event) => setPageInput(event.target.value)}
+                onFocus={handlePageInputFocus}
+                onBlur={handlePageInputBlur}
+                onKeyDown={handlePageInputKeyDown}
+                aria-label="Page number"
+                disabled={numPages < 1}
+                className="h-8 w-14 px-1.5 text-center text-sm"
+              />
+              <span>of {numPages}</span>
+            </div>
             <Button
               variant="ghost"
               size="icon"
@@ -479,10 +547,24 @@ export function PDFReader({
           >
             <ChevronLeft className="w-6 h-6" />
           </Button>
-          <div className="flex flex-col items-center">
-            <span className="text-sm font-medium">
-              {currentPage} / {numPages}
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-1.5 text-sm font-medium">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={numPages || 1}
+                value={pageInput}
+                onChange={(event) => setPageInput(event.target.value)}
+                onFocus={handlePageInputFocus}
+                onBlur={handlePageInputBlur}
+                onKeyDown={handlePageInputKeyDown}
+                aria-label="Page number"
+                disabled={numPages < 1}
+                className="h-8 w-14 px-1.5 text-center text-sm"
+              />
+              <span>/ {numPages}</span>
+            </div>
             <span className="text-xs text-muted-foreground">
               {progressPercent}%
             </span>
