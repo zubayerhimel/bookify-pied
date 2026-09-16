@@ -129,7 +129,7 @@ export function Dashboard() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2">
+        <h1 className="font-reading text-3xl sm:text-4xl font-semibold text-foreground tracking-tight mb-2">
           Quotes & Notes
         </h1>
         <p className="text-muted-foreground">

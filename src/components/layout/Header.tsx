@@ -1,6 +1,6 @@
+import { BookOpen, Menu, Quote, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Quote, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +22,7 @@ export function Header() {
             <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-lg text-foreground hidden sm:block">
+            <span className="font-reading text-xl font-semibold text-foreground hidden sm:block">
               PDF Reader
             </span>
           </Link>
@@ -55,7 +55,11 @@ export function Header() {
             className="sm:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
           </Button>
         </div>
 
@@ -72,7 +76,10 @@ export function Header() {
                 >
                   <Button
                     variant={isActive ? 'secondary' : 'ghost'}
-                    className={cn('w-full justify-start gap-2', isActive && 'bg-secondary')}
+                    className={cn(
+                      'w-full justify-start gap-2',
+                      isActive && 'bg-secondary'
+                    )}
                   >
                     <item.icon className="w-4 h-4" />
                     {item.label}

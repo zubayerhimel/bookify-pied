@@ -1,12 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --font-reading: "Crimson Pro", Georgia, serif;
-  --font-ui: "Inter", system-ui, sans-serif;
+  --font-reading: "Fraunces", "Crimson Pro", Georgia, serif;
+  --font-ui: "Hanken Grotesk", system-ui, sans-serif;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -41,16 +41,17 @@
   --color-reading-highlight-green: hsl(var(--reading-highlight-green));
   --color-reading-highlight-blue: hsl(var(--reading-highlight-blue));
   --color-reading-highlight-pink: hsl(var(--reading-highlight-pink));
+  --color-brass: hsl(var(--brass));
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
-  --shadow-soft: 0 2px 8px -2px hsl(30 10% 15% / 0.08);
-  --shadow-medium: 0 4px 16px -4px hsl(30 10% 15% / 0.12);
+  --shadow-soft: 0 2px 8px -2px hsl(168 25% 10% / 0.08);
+  --shadow-medium: 0 6px 20px -6px hsl(168 25% 10% / 0.14);
   --shadow-book:
-    0 10px 40px -10px hsl(30 10% 15% / 0.2),
-    0 2px 8px -2px hsl(30 10% 15% / 0.1);
+    0 14px 44px -12px hsl(168 25% 10% / 0.24),
+    0 2px 8px -3px hsl(168 25% 10% / 0.12);
 
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-fade-out: fade-out 0.3s ease-out;
@@ -132,133 +133,140 @@
 
 @layer base {
   :root {
-    /* Light Mode - Warm, clean reading surface */
-    --background: 40 33% 98%;
-    --foreground: 30 10% 15%;
+    /* Light — the reading desk by day: evergreen ink on soft paper */
+    --background: 48 15% 96%;
+    --foreground: 168 24% 12%;
 
-    --card: 40 25% 96%;
-    --card-foreground: 30 10% 15%;
+    --card: 50 22% 98%;
+    --card-foreground: 168 24% 12%;
 
-    --popover: 40 33% 98%;
-    --popover-foreground: 30 10% 15%;
+    --popover: 50 22% 98%;
+    --popover-foreground: 168 24% 12%;
 
-    /* Primary - Warm amber accent */
-    --primary: 32 95% 44%;
-    --primary-foreground: 40 33% 98%;
+    /* Primary — deep pine (the study, the book spine) */
+    --primary: 164 46% 24%;
+    --primary-foreground: 48 30% 97%;
 
-    /* Secondary - Soft warm gray */
-    --secondary: 35 20% 90%;
-    --secondary-foreground: 30 10% 25%;
+    /* Secondary — soft sage surface */
+    --secondary: 150 14% 90%;
+    --secondary-foreground: 168 22% 20%;
 
-    --muted: 35 15% 92%;
-    --muted-foreground: 30 8% 45%;
+    --muted: 145 12% 92%;
+    --muted-foreground: 165 10% 38%;
 
-    --accent: 32 80% 92%;
-    --accent-foreground: 32 95% 35%;
+    --accent: 158 28% 88%;
+    --accent-foreground: 164 46% 22%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 4 66% 48%;
+    --destructive-foreground: 48 30% 97%;
 
-    --border: 35 20% 88%;
-    --input: 35 20% 88%;
-    --ring: 32 95% 44%;
+    --border: 145 12% 86%;
+    --input: 145 12% 86%;
+    --ring: 164 46% 30%;
 
     --radius: 0.75rem;
 
-    /* Reading-specific tokens */
-    --reading-bg: 40 33% 98%;
-    --reading-text: 30 10% 15%;
-    --reading-highlight: 48 100% 70%;
-    --reading-highlight-green: 142 60% 75%;
-    --reading-highlight-blue: 210 80% 80%;
-    --reading-highlight-pink: 330 80% 85%;
+    /* Brass — the one warm gesture, reserved for reading & annotation */
+    --brass: 36 55% 46%;
 
-    /* Sidebar tokens */
-    --sidebar-background: 35 20% 95%;
-    --sidebar-foreground: 30 10% 25%;
-    --sidebar-primary: 32 95% 44%;
-    --sidebar-primary-foreground: 40 33% 98%;
-    --sidebar-accent: 35 15% 90%;
-    --sidebar-accent-foreground: 30 10% 25%;
-    --sidebar-border: 35 20% 88%;
-    --sidebar-ring: 32 95% 44%;
+    /* Reading surface + highlighter inks (translucent over paper) */
+    --reading-bg: 48 15% 96%;
+    --reading-text: 168 24% 12%;
+    --reading-highlight: 46 88% 66%;
+    --reading-highlight-green: 138 42% 66%;
+    --reading-highlight-blue: 205 62% 74%;
+    --reading-highlight-pink: 338 66% 80%;
+
+    /* Sidebar */
+    --sidebar-background: 150 14% 93%;
+    --sidebar-foreground: 168 22% 22%;
+    --sidebar-primary: 164 46% 24%;
+    --sidebar-primary-foreground: 48 30% 97%;
+    --sidebar-accent: 150 14% 88%;
+    --sidebar-accent-foreground: 168 22% 22%;
+    --sidebar-border: 145 12% 84%;
+    --sidebar-ring: 164 46% 30%;
   }
 
-  /* Sepia Mode - Classic book paper feel */
+  /* Sepia — candlelit paper for long-form reading */
   .sepia {
-    --background: 39 45% 92%;
-    --foreground: 28 25% 18%;
+    --background: 40 34% 90%;
+    --foreground: 28 26% 18%;
 
-    --card: 39 40% 88%;
-    --card-foreground: 28 25% 18%;
+    --card: 40 32% 93%;
+    --card-foreground: 28 26% 18%;
 
-    --popover: 39 45% 92%;
-    --popover-foreground: 28 25% 18%;
+    --popover: 40 32% 93%;
+    --popover-foreground: 28 26% 18%;
 
-    --secondary: 38 35% 85%;
-    --secondary-foreground: 28 25% 25%;
+    --secondary: 38 28% 84%;
+    --secondary-foreground: 28 24% 26%;
 
-    --muted: 38 30% 87%;
-    --muted-foreground: 28 15% 40%;
+    --muted: 38 26% 86%;
+    --muted-foreground: 30 16% 40%;
 
-    --accent: 32 70% 88%;
-    --accent-foreground: 32 80% 30%;
+    --accent: 150 22% 82%;
+    --accent-foreground: 164 44% 24%;
 
-    --border: 38 30% 82%;
-    --input: 38 30% 82%;
+    --border: 38 24% 80%;
+    --input: 38 24% 80%;
 
-    --reading-bg: 39 45% 92%;
-    --reading-text: 28 25% 18%;
+    --brass: 34 58% 44%;
 
-    --sidebar-background: 38 35% 88%;
-    --sidebar-foreground: 28 25% 25%;
+    --reading-bg: 40 34% 90%;
+    --reading-text: 28 26% 18%;
+
+    --sidebar-background: 38 30% 86%;
+    --sidebar-foreground: 28 24% 26%;
   }
 
-  /* Dark Mode - Deep, comfortable night reading */
+  /* Dark — night reading: deep evergreen ink */
   .dark {
-    --background: 0 0% 8%;
-    --foreground: 40 15% 85%;
+    --background: 170 22% 8%;
+    --foreground: 44 18% 86%;
 
-    --card: 0 0% 11%;
-    --card-foreground: 40 15% 85%;
+    --card: 168 18% 11%;
+    --card-foreground: 44 18% 86%;
 
-    --popover: 0 0% 11%;
-    --popover-foreground: 40 15% 85%;
+    --popover: 168 18% 11%;
+    --popover-foreground: 44 18% 86%;
 
-    --primary: 35 100% 50%;
-    --primary-foreground: 0 0% 8%;
+    --primary: 158 44% 52%;
+    --primary-foreground: 170 30% 8%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 40 15% 80%;
+    --secondary: 168 14% 16%;
+    --secondary-foreground: 44 16% 82%;
 
-    --muted: 0 0% 14%;
-    --muted-foreground: 40 10% 55%;
+    --muted: 168 12% 15%;
+    --muted-foreground: 150 10% 58%;
 
-    --accent: 35 50% 20%;
-    --accent-foreground: 35 100% 60%;
+    --accent: 160 30% 22%;
+    --accent-foreground: 158 44% 60%;
 
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 4 58% 46%;
+    --destructive-foreground: 44 20% 92%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 35 100% 50%;
+    --border: 168 14% 18%;
+    --input: 168 14% 18%;
+    --ring: 158 44% 52%;
 
-    --reading-bg: 0 0% 8%;
-    --reading-text: 40 15% 85%;
-    --reading-highlight: 48 80% 35%;
-    --reading-highlight-green: 142 40% 30%;
-    --reading-highlight-blue: 210 50% 35%;
-    --reading-highlight-pink: 330 50% 40%;
+    --brass: 38 62% 56%;
 
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 40 15% 80%;
-    --sidebar-primary: 35 100% 50%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 40 15% 80%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 35 100% 50%;
+    --reading-bg: 170 22% 8%;
+    --reading-text: 44 18% 86%;
+    --reading-highlight: 46 70% 34%;
+    --reading-highlight-green: 138 38% 30%;
+    --reading-highlight-blue: 205 46% 34%;
+    --reading-highlight-pink: 338 44% 38%;
+
+    --sidebar-background: 170 20% 9%;
+    --sidebar-foreground: 44 16% 82%;
+    --sidebar-primary: 158 44% 52%;
+    --sidebar-primary-foreground: 170 30% 8%;
+    --sidebar-accent: 168 14% 15%;
+    --sidebar-accent-foreground: 44 16% 82%;
+    --sidebar-border: 168 14% 18%;
+    --sidebar-ring: 158 44% 52%;
   }
 }
 
@@ -285,6 +293,8 @@
   /* Reading typography */
   .font-reading {
     font-family: var(--font-reading);
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
   }
 
   .font-ui {
@@ -356,8 +366,8 @@
     @apply h-full rounded-full transition-all duration-500 ease-out;
     background: linear-gradient(
       90deg,
-      hsl(var(--primary)),
-      hsl(var(--primary) / 0.8)
+      hsl(var(--brass)),
+      hsl(var(--brass) / 0.82)
     );
   }
 

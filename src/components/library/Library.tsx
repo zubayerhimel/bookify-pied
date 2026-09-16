@@ -70,7 +70,7 @@ export function Library() {
             <BookOpen className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">
+            <h1 className="font-reading text-3xl sm:text-4xl font-semibold text-foreground tracking-tight">
               My Library
             </h1>
             <p className="text-sm text-muted-foreground">
