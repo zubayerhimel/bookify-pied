@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Coffee,
+  Keyboard,
   ListTree,
   Minus,
   Moon,
@@ -99,6 +100,17 @@ async function resolveOutlinePage(
 type RawOutline = Awaited<ReturnType<PDFDocumentProxy['getOutline']>>;
 type RawOutlineItem = RawOutline extends (infer T)[] ? T : never;
 
+const SHORTCUTS: { keys: string[]; label: string }[] = [
+  { keys: ['←', '↑'], label: 'Previous page' },
+  { keys: ['→', '↓', 'Space'], label: 'Next page' },
+  { keys: ['+'], label: 'Zoom in' },
+  { keys: ['−'], label: 'Zoom out' },
+  { keys: ['B'], label: 'Bookmark this page' },
+  { keys: ['⌘/Ctrl', 'F'], label: 'Find in document' },
+  { keys: ['Esc'], label: 'Close panel or exit reader' },
+  { keys: ['?'], label: 'Show this help' },
+];
+
 async function buildToc(
   pdf: PDFDocumentProxy,
   items: RawOutlineItem[]
@@ -146,6 +158,7 @@ export function PDFReader({
   const [outline, setOutline] = useState<TocItem[]>([]);
   const [pdfProxy, setPdfProxy] = useState<PDFDocumentProxy | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [searchBoxes, setSearchBoxes] = useState<SearchBox[]>([]);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const [readyRenderKey, setReadyRenderKey] = useState<string | null>(null);
@@ -475,6 +488,11 @@ export function PDFReader({
         return;
       }
 
+      if (showShortcuts) {
+        if (e.key === 'Escape' || e.key === '?') setShowShortcuts(false);
+        return;
+      }
+
       switch (e.key) {
         case 'ArrowLeft':
         case 'ArrowUp':
@@ -508,12 +526,23 @@ export function PDFReader({
         case 'B':
           toggleBookmark(currentPageRef.current);
           break;
+        case '?':
+          setShowShortcuts(true);
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [numPages, onClose, showOutline, showSearch, closeSearch, toggleBookmark]);
+  }, [
+    numPages,
+    onClose,
+    showOutline,
+    showSearch,
+    closeSearch,
+    toggleBookmark,
+    showShortcuts,
+  ]);
 
   // Handle text selection
   const handleTextSelection = useCallback((event: MouseEvent) => {
@@ -1027,6 +1056,20 @@ export function PDFReader({
         </div>
       </div>
 
+      {/* Keyboard shortcuts help bubble */}
+      <button
+        type="button"
+        onClick={() => setShowShortcuts(true)}
+        aria-label="Keyboard shortcuts"
+        title="Keyboard shortcuts (?)"
+        className={cn(
+          'fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border bg-card/95 text-muted-foreground shadow-medium backdrop-blur-sm transition-opacity duration-200 hover:bg-accent hover:text-foreground sm:bottom-6 sm:right-6',
+          !showToolbar && 'opacity-0 pointer-events-none'
+        )}
+      >
+        <Keyboard className="h-5 w-5" />
+      </button>
+
       {/* Selection Toolbar */}
       {selection && (
         <SelectionToolbar
@@ -1103,6 +1146,37 @@ export function PDFReader({
               Save Note
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Keyboard shortcuts</DialogTitle>
+            <DialogDescription>
+              Move through your reading without leaving the keyboard.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="divide-y divide-border">
+            {SHORTCUTS.map(({ keys, label }) => (
+              <li
+                key={label}
+                className="flex items-center justify-between gap-4 py-2.5 text-sm"
+              >
+                <span className="text-foreground">{label}</span>
+                <span className="flex items-center gap-1">
+                  {keys.map((key) => (
+                    <kbd
+                      key={key}
+                      className="inline-flex min-w-6 items-center justify-center rounded border bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                    >
+                      {key}
+                    </kbd>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
         </DialogContent>
       </Dialog>
     </div>
