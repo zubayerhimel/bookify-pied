@@ -325,7 +325,15 @@ export function PDFReader({
   }, [numPages, onClose, showOutline]);
 
   // Handle text selection
-  const handleTextSelection = useCallback(() => {
+  const handleTextSelection = useCallback((event: MouseEvent) => {
+    // Clicks inside the selection toolbar (e.g. the note textarea) must not clear the active selection.
+    if (
+      event.target instanceof Element &&
+      event.target.closest('.floating-toolbar')
+    ) {
+      return;
+    }
+
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) {
       setSelection(null);
