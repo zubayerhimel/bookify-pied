@@ -77,7 +77,7 @@ export function LibraryCard({
         />
 
         {/* Cover Thumbnail */}
-        <div className="relative aspect-[3/4] bg-muted overflow-hidden">
+        <div className="relative aspect-3/4 bg-muted overflow-hidden">
           {doc.coverThumbnail ? (
             <img
               src={doc.coverThumbnail}
@@ -85,14 +85,14 @@ export function LibraryCard({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-primary/20 to-primary/5">
               <FileText className="w-12 h-12 text-primary/40" />
             </div>
           )}
 
           {/* Progress Overlay */}
           {progressPercent > 0 && progressPercent < 100 && (
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+            <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-3">
               <div className="reading-progress">
                 <div
                   className="reading-progress-bar"

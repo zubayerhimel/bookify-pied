@@ -1,4 +1,5 @@
 import {
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   Coffee,
@@ -113,11 +114,14 @@ export function PDFReader({
   const navigate = useNavigate();
   const {
     notes,
+    bookmarks,
     addHighlight,
     addQuote,
     addNote,
     updateNote,
     removeNote,
+    toggleBookmark,
+    removeBookmark,
     getHighlightsForPage,
     getNotesForPage,
   } = useAnnotations(doc.id);
@@ -151,6 +155,8 @@ export function PDFReader({
   const skipPageCommitRef = useRef(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -491,12 +497,16 @@ export function PDFReader({
         case '-':
           setScale((s) => Math.max(0.5, s - 0.1));
           break;
+        case 'b':
+        case 'B':
+          toggleBookmark(currentPageRef.current);
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [numPages, onClose, showOutline, showSearch, closeSearch]);
+  }, [numPages, onClose, showOutline, showSearch, closeSearch, toggleBookmark]);
 
   // Handle text selection
   const handleTextSelection = useCallback((event: MouseEvent) => {
@@ -601,6 +611,9 @@ export function PDFReader({
   const pageHighlights = getHighlightsForPage(currentPage);
   const currentPageNoteCount = getNotesForPage(currentPage).length;
   const totalNoteCount = notes.length;
+  const isCurrentPageBookmarked = bookmarks.some(
+    (b) => b.pageNumber === currentPage
+  );
 
   const modeIcons: Record<ReadingMode, typeof Sun> = {
     light: Sun,
@@ -630,14 +643,14 @@ export function PDFReader({
             >
               <X className="w-5 h-5" />
             </Button>{' '}
-            {outline.length > 0 && (
+            {(outline.length > 0 || bookmarks.length > 0) && (
               <Button
                 variant={showOutline ? 'secondary' : 'ghost'}
                 size="icon"
                 onClick={() => setShowOutline((open) => !open)}
-                aria-label={showOutline ? 'Hide contents' : 'Show contents'}
+                aria-label={showOutline ? 'Hide navigation' : 'Show navigation'}
                 aria-pressed={showOutline}
-                title="Table of contents"
+                title="Bookmarks & contents"
               >
                 <ListTree className="w-5 h-5" />
               </Button>
@@ -687,6 +700,29 @@ export function PDFReader({
 
           {/* Right: Controls */}
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => toggleBookmark(currentPage)}
+              aria-label={
+                isCurrentPageBookmarked
+                  ? 'Remove bookmark'
+                  : 'Bookmark this page'
+              }
+              aria-pressed={isCurrentPageBookmarked}
+              title={
+                isCurrentPageBookmarked
+                  ? 'Remove bookmark (B)'
+                  : 'Bookmark this page (B)'
+              }
+            >
+              <Bookmark
+                className={cn(
+                  'w-4 h-4',
+                  isCurrentPageBookmarked && 'fill-brass text-brass'
+                )}
+              />
+            </Button>
             <Button
               variant={showSearch ? 'secondary' : 'ghost'}
               size="icon"
@@ -946,9 +982,11 @@ export function PDFReader({
       <OutlineSidebar
         open={showOutline}
         outline={outline}
+        bookmarks={bookmarks}
         currentPage={currentPage}
         onClose={() => setShowOutline(false)}
         onNavigate={goToPage}
+        onRemoveBookmark={removeBookmark}
       />
 
       <NotesPanel

@@ -1,14 +1,5 @@
-import { openDB, type IDBPDatabase } from 'idb';
-import {
-  type PDFDocument,
-  type PDFFile,
-  type Highlight,
-  type Quote,
-  type Note,
-  DB_NAME,
-  DB_VERSION,
-  STORE_NAMES,
-} from './types';
+import { type IDBPDatabase, openDB } from "idb";
+import { type Bookmark, DB_NAME, DB_VERSION, type Highlight, type Note, type PDFDocument, type PDFFile, type Quote, STORE_NAMES } from "./types";
 
 let dbInstance: IDBPDatabase | null = null;
 
@@ -20,34 +11,39 @@ export async function getDB(): Promise<IDBPDatabase> {
       upgrade(db) {
         // Documents store
         if (!db.objectStoreNames.contains(STORE_NAMES.DOCUMENTS)) {
-          db.createObjectStore(STORE_NAMES.DOCUMENTS, { keyPath: 'id' });
+          db.createObjectStore(STORE_NAMES.DOCUMENTS, { keyPath: "id" });
         }
 
         // Files store (separate for large binary data)
         if (!db.objectStoreNames.contains(STORE_NAMES.FILES)) {
-          db.createObjectStore(STORE_NAMES.FILES, { keyPath: 'id' });
+          db.createObjectStore(STORE_NAMES.FILES, { keyPath: "id" });
         }
 
         // Highlights store
         if (!db.objectStoreNames.contains(STORE_NAMES.HIGHLIGHTS)) {
-          db.createObjectStore(STORE_NAMES.HIGHLIGHTS, { keyPath: 'id' });
+          db.createObjectStore(STORE_NAMES.HIGHLIGHTS, { keyPath: "id" });
         }
 
         // Quotes store
         if (!db.objectStoreNames.contains(STORE_NAMES.QUOTES)) {
-          db.createObjectStore(STORE_NAMES.QUOTES, { keyPath: 'id' });
+          db.createObjectStore(STORE_NAMES.QUOTES, { keyPath: "id" });
         }
 
         // Notes store
         if (!db.objectStoreNames.contains(STORE_NAMES.NOTES)) {
-          db.createObjectStore(STORE_NAMES.NOTES, { keyPath: 'id' });
+          db.createObjectStore(STORE_NAMES.NOTES, { keyPath: "id" });
+        }
+
+        // Bookmarks store
+        if (!db.objectStoreNames.contains(STORE_NAMES.BOOKMARKS)) {
+          db.createObjectStore(STORE_NAMES.BOOKMARKS, { keyPath: "id" });
         }
       },
     });
 
     return dbInstance;
   } catch (err) {
-    console.error('Failed to open database:', err);
+    console.error("Failed to open database:", err);
     throw err;
   }
 }
@@ -71,16 +67,9 @@ export async function saveDocumentWithFile(doc: PDFDocument, file: PDFFile): Pro
     lastOpened: doc.lastOpened instanceof Date ? doc.lastOpened.toISOString() : doc.lastOpened,
     createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
   };
-  const transaction = db.transaction(
-    [STORE_NAMES.DOCUMENTS, STORE_NAMES.FILES],
-    'readwrite'
-  );
+  const transaction = db.transaction([STORE_NAMES.DOCUMENTS, STORE_NAMES.FILES], "readwrite");
 
-  await Promise.all([
-    transaction.objectStore(STORE_NAMES.DOCUMENTS).put(storable),
-    transaction.objectStore(STORE_NAMES.FILES).put(file),
-    transaction.done,
-  ]);
+  await Promise.all([transaction.objectStore(STORE_NAMES.DOCUMENTS).put(storable), transaction.objectStore(STORE_NAMES.FILES).put(file), transaction.done]);
 }
 
 export async function getDocument(id: string): Promise<PDFDocument | undefined> {
@@ -111,7 +100,7 @@ export async function getAllDocuments(): Promise<PDFDocument[]> {
 
 export async function deleteDocument(id: string): Promise<void> {
   const db = await getDB();
-  
+
   // Delete document and file
   await db.delete(STORE_NAMES.DOCUMENTS, id);
   await db.delete(STORE_NAMES.FILES, id);
@@ -137,6 +126,14 @@ export async function deleteDocument(id: string): Promise<void> {
   for (const n of notes) {
     if (n.pdfId === id) {
       await db.delete(STORE_NAMES.NOTES, n.id);
+    }
+  }
+
+  // Delete associated bookmarks
+  const bookmarks = await db.getAll(STORE_NAMES.BOOKMARKS);
+  for (const b of bookmarks) {
+    if (b.pdfId === id) {
+      await db.delete(STORE_NAMES.BOOKMARKS, b.id);
     }
   }
 }
@@ -260,12 +257,35 @@ export async function deleteNote(id: string): Promise<void> {
   await db.delete(STORE_NAMES.NOTES, id);
 }
 
+// Bookmark operations
+export async function saveBookmark(bookmark: Bookmark): Promise<void> {
+  const db = await getDB();
+  const storable = {
+    ...bookmark,
+    createdAt: bookmark.createdAt instanceof Date ? bookmark.createdAt.toISOString() : bookmark.createdAt,
+  };
+  await db.put(STORE_NAMES.BOOKMARKS, storable);
+}
+
+export async function getBookmarksByPdf(pdfId: string): Promise<Bookmark[]> {
+  const db = await getDB();
+  const all = await db.getAll(STORE_NAMES.BOOKMARKS);
+  return all
+    .filter((b) => b.pdfId === pdfId)
+    .map((b) => ({
+      ...b,
+      createdAt: new Date(b.createdAt),
+    }))
+    .sort((a, b) => a.pageNumber - b.pageNumber);
+}
+
+export async function deleteBookmark(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(STORE_NAMES.BOOKMARKS, id);
+}
+
 // Reading progress
-export async function updateReadingProgress(
-  pdfId: string,
-  currentPage: number,
-  scrollPosition: number
-): Promise<void> {
+export async function updateReadingProgress(pdfId: string, currentPage: number, scrollPosition: number): Promise<void> {
   const doc = await getDocument(pdfId);
   if (doc) {
     doc.currentPage = currentPage;

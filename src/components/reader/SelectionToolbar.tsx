@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
 import { Quote, StickyNote, X } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { HighlightColor } from '@/lib/db/types';
@@ -13,7 +13,11 @@ interface SelectionToolbarProps {
   onClose: () => void;
 }
 
-const highlightColors: { color: HighlightColor; className: string; label: string }[] = [
+const highlightColors: {
+  color: HighlightColor;
+  className: string;
+  label: string;
+}[] = [
   { color: 'yellow', className: 'bg-reading-highlight', label: 'Yellow' },
   { color: 'green', className: 'bg-reading-highlight-green', label: 'Green' },
   { color: 'blue', className: 'bg-reading-highlight-blue', label: 'Blue' },
@@ -63,14 +67,22 @@ export function SelectionToolbar({
             value={noteContent}
             onChange={(e) => setNoteContent(e.target.value)}
             placeholder="Write your note..."
-            className="min-h-[80px] text-sm resize-none"
+            className="min-h-20 text-sm resize-none"
             autoFocus
           />
           <div className="flex justify-end gap-2 mt-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowNoteInput(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowNoteInput(false)}
+            >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSaveNote} disabled={!noteContent.trim()}>
+            <Button
+              size="sm"
+              onClick={handleSaveNote}
+              disabled={!noteContent.trim()}
+            >
               Save
             </Button>
           </div>
@@ -116,7 +128,12 @@ export function SelectionToolbar({
           </Button>
 
           {/* Close Button */}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onClose}
+          >
             <X className="w-4 h-4" />
           </Button>
         </div>

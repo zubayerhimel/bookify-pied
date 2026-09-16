@@ -1,39 +1,43 @@
-import { useState, useEffect, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import type { Highlight, Quote, Note, HighlightColor, HighlightRect } from '@/lib/db/types';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import {
-  getHighlightsByPdf,
-  saveHighlight,
+  deleteBookmark as dbDeleteBookmark,
   deleteHighlight as dbDeleteHighlight,
-  getQuotesByPdf,
-  saveQuote,
-  deleteQuote as dbDeleteQuote,
-  getNotesByPdf,
-  saveNote,
   deleteNote as dbDeleteNote,
-} from '@/lib/db/database';
+  deleteQuote as dbDeleteQuote,
+  getBookmarksByPdf,
+  getHighlightsByPdf,
+  getNotesByPdf,
+  getQuotesByPdf,
+  saveBookmark,
+  saveHighlight,
+  saveNote,
+  saveQuote,
+} from "@/lib/db/database";
+import type { Bookmark, Highlight, HighlightColor, HighlightRect, Note, Quote } from "@/lib/db/types";
 
 export function useAnnotations(pdfId: string | null) {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const bookmarksRef = useRef(bookmarks);
+  bookmarksRef.current = bookmarks;
 
   const loadAnnotations = useCallback(async () => {
     if (!pdfId) return;
 
     setLoading(true);
     try {
-      const [h, q, n] = await Promise.all([
-        getHighlightsByPdf(pdfId),
-        getQuotesByPdf(pdfId),
-        getNotesByPdf(pdfId),
-      ]);
+      const [h, q, n, b] = await Promise.all([getHighlightsByPdf(pdfId), getQuotesByPdf(pdfId), getNotesByPdf(pdfId), getBookmarksByPdf(pdfId)]);
       setHighlights(h);
       setQuotes(q);
       setNotes(n);
+      setBookmarks(b);
     } catch (err) {
-      console.error('Error loading annotations:', err);
+      console.error("Error loading annotations:", err);
     } finally {
       setLoading(false);
     }
@@ -45,12 +49,7 @@ export function useAnnotations(pdfId: string | null) {
 
   // Highlight operations
   const addHighlight = useCallback(
-    async (
-      pageNumber: number,
-      text: string,
-      color: HighlightColor,
-      rects: HighlightRect[]
-    ): Promise<Highlight | null> => {
+    async (pageNumber: number, text: string, color: HighlightColor, rects: HighlightRect[]): Promise<Highlight | null> => {
       if (!pdfId) return null;
 
       const highlight: Highlight = {
@@ -65,30 +64,30 @@ export function useAnnotations(pdfId: string | null) {
 
       try {
         await saveHighlight(highlight);
-        setHighlights(prev => [...prev, highlight]);
+        setHighlights((prev) => [...prev, highlight]);
         return highlight;
       } catch (err) {
-        console.error('Error saving highlight:', err);
+        console.error("Error saving highlight:", err);
         return null;
       }
     },
-    [pdfId]
+    [pdfId],
   );
 
   const removeHighlight = useCallback(async (id: string): Promise<void> => {
     try {
       await dbDeleteHighlight(id);
-      setHighlights(prev => prev.filter(h => h.id !== id));
+      setHighlights((prev) => prev.filter((h) => h.id !== id));
     } catch (err) {
-      console.error('Error deleting highlight:', err);
+      console.error("Error deleting highlight:", err);
     }
   }, []);
 
   const getHighlightsForPage = useCallback(
     (pageNumber: number): Highlight[] => {
-      return highlights.filter(h => h.pageNumber === pageNumber);
+      return highlights.filter((h) => h.pageNumber === pageNumber);
     },
-    [highlights]
+    [highlights],
   );
 
   // Quote operations
@@ -106,22 +105,22 @@ export function useAnnotations(pdfId: string | null) {
 
       try {
         await saveQuote(quote);
-        setQuotes(prev => [...prev, quote]);
+        setQuotes((prev) => [...prev, quote]);
         return quote;
       } catch (err) {
-        console.error('Error saving quote:', err);
+        console.error("Error saving quote:", err);
         return null;
       }
     },
-    [pdfId]
+    [pdfId],
   );
 
   const removeQuote = useCallback(async (id: string): Promise<void> => {
     try {
       await dbDeleteQuote(id);
-      setQuotes(prev => prev.filter(q => q.id !== id));
+      setQuotes((prev) => prev.filter((q) => q.id !== id));
     } catch (err) {
-      console.error('Error deleting quote:', err);
+      console.error("Error deleting quote:", err);
     }
   }, []);
 
@@ -143,19 +142,19 @@ export function useAnnotations(pdfId: string | null) {
 
       try {
         await saveNote(note);
-        setNotes(prev => [...prev, note]);
+        setNotes((prev) => [...prev, note]);
         return note;
       } catch (err) {
-        console.error('Error saving note:', err);
+        console.error("Error saving note:", err);
         return null;
       }
     },
-    [pdfId]
+    [pdfId],
   );
 
   const updateNote = useCallback(
     async (id: string, content: string): Promise<void> => {
-      const note = notes.find(n => n.id === id);
+      const note = notes.find((n) => n.id === id);
       if (!note) return;
 
       const updated: Note = {
@@ -166,34 +165,81 @@ export function useAnnotations(pdfId: string | null) {
 
       try {
         await saveNote(updated);
-        setNotes(prev => prev.map(n => (n.id === id ? updated : n)));
+        setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
       } catch (err) {
-        console.error('Error updating note:', err);
+        console.error("Error updating note:", err);
       }
     },
-    [notes]
+    [notes],
   );
 
   const removeNote = useCallback(async (id: string): Promise<void> => {
     try {
       await dbDeleteNote(id);
-      setNotes(prev => prev.filter(n => n.id !== id));
+      setNotes((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
-      console.error('Error deleting note:', err);
+      console.error("Error deleting note:", err);
     }
   }, []);
 
   const getNotesForPage = useCallback(
     (pageNumber: number): Note[] => {
-      return notes.filter(n => n.pageNumber === pageNumber);
+      return notes.filter((n) => n.pageNumber === pageNumber);
     },
-    [notes]
+    [notes],
+  );
+
+  // Bookmark operations
+  const addBookmark = useCallback(
+    async (pageNumber: number, label?: string): Promise<Bookmark | null> => {
+      if (!pdfId) return null;
+
+      const bookmark: Bookmark = {
+        id: uuidv4(),
+        pdfId,
+        pageNumber,
+        label,
+        createdAt: new Date(),
+      };
+
+      try {
+        await saveBookmark(bookmark);
+        setBookmarks((prev) => [...prev, bookmark].sort((a, b) => a.pageNumber - b.pageNumber));
+        return bookmark;
+      } catch (err) {
+        console.error("Error saving bookmark:", err);
+        return null;
+      }
+    },
+    [pdfId],
+  );
+
+  const removeBookmark = useCallback(async (id: string): Promise<void> => {
+    try {
+      await dbDeleteBookmark(id);
+      setBookmarks((prev) => prev.filter((b) => b.id !== id));
+    } catch (err) {
+      console.error("Error deleting bookmark:", err);
+    }
+  }, []);
+
+  const toggleBookmark = useCallback(
+    async (pageNumber: number): Promise<void> => {
+      const existing = bookmarksRef.current.find((b) => b.pageNumber === pageNumber);
+      if (existing) {
+        await removeBookmark(existing.id);
+      } else {
+        await addBookmark(pageNumber);
+      }
+    },
+    [addBookmark, removeBookmark],
   );
 
   return {
     highlights,
     quotes,
     notes,
+    bookmarks,
     loading,
     addHighlight,
     removeHighlight,
@@ -204,6 +250,9 @@ export function useAnnotations(pdfId: string | null) {
     updateNote,
     removeNote,
     getNotesForPage,
+    addBookmark,
+    removeBookmark,
+    toggleBookmark,
     refresh: loadAnnotations,
   };
 }

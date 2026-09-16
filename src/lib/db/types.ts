@@ -1,6 +1,6 @@
 // Database types for the PDF Reader application
 
-export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink';
+export type HighlightColor = "yellow" | "green" | "blue" | "pink";
 
 export interface PDFDocument {
   id: string;
@@ -55,6 +55,14 @@ export interface Note {
   updatedAt: Date;
 }
 
+export interface Bookmark {
+  id: string;
+  pdfId: string;
+  pageNumber: number;
+  label?: string;
+  createdAt: Date;
+}
+
 export interface ReadingProgress {
   pdfId: string;
   currentPage: number;
@@ -64,12 +72,13 @@ export interface ReadingProgress {
 
 // Store names for IndexedDB
 export const STORE_NAMES = {
-  DOCUMENTS: 'documents',
-  FILES: 'files',
-  HIGHLIGHTS: 'highlights',
-  QUOTES: 'quotes',
-  NOTES: 'notes',
+  DOCUMENTS: "documents",
+  FILES: "files",
+  HIGHLIGHTS: "highlights",
+  QUOTES: "quotes",
+  NOTES: "notes",
+  BOOKMARKS: "bookmarks",
 } as const;
 
-export const DB_NAME = 'kindle-pdf-reader';
-export const DB_VERSION = 1;
+export const DB_NAME = "kindle-pdf-reader";
+export const DB_VERSION = 2;

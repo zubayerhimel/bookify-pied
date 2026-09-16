@@ -1,6 +1,14 @@
-import { ChevronDown, ChevronRight, ListTree, X } from 'lucide-react';
+import {
+  Bookmark as BookmarkIcon,
+  ChevronDown,
+  ChevronRight,
+  ListTree,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import type { Bookmark } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
 
 export interface TocItem {
@@ -12,9 +20,11 @@ export interface TocItem {
 interface OutlineSidebarProps {
   open: boolean;
   outline: TocItem[];
+  bookmarks: Bookmark[];
   currentPage: number;
   onClose: () => void;
   onNavigate: (page: number) => void;
+  onRemoveBookmark: (id: string) => void;
 }
 
 function collectTopLevelKeys(items: TocItem[]): Set<string> {
@@ -143,9 +153,11 @@ function OutlineNodes({
 export function OutlineSidebar({
   open,
   outline,
+  bookmarks,
   currentPage,
   onClose,
   onNavigate,
+  onRemoveBookmark,
 }: OutlineSidebarProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() =>
     collectTopLevelKeys(outline)
@@ -172,7 +184,7 @@ export function OutlineSidebar({
 
   return (
     <aside
-      aria-label="Table of contents"
+      aria-label="Bookmarks and contents"
       aria-hidden={!open}
       className={cn(
         'reader-outline-panel fixed top-0 left-0 z-60 flex h-full w-full max-w-xs flex-col border-r bg-card shadow-medium transition-transform duration-300',
@@ -194,22 +206,73 @@ export function OutlineSidebar({
         </Button>
       </div>
 
-      <nav className="custom-scrollbar flex-1 overflow-y-auto px-2 py-3">
-        {outline.length === 0 ? (
-          <p className="px-2 py-8 text-center text-sm text-muted-foreground">
-            This document has no table of contents.
-          </p>
-        ) : (
-          <OutlineNodes
-            items={outline}
-            level={0}
-            path=""
-            activePage={activePage}
-            expanded={expanded}
-            onToggle={toggle}
-            onNavigate={onNavigate}
-          />
+      <nav className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-2 py-3">
+        {bookmarks.length > 0 && (
+          <section aria-label="Bookmarks">
+            {outline.length > 0 && (
+              <h4 className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+                Bookmarks
+              </h4>
+            )}
+            <ul className="space-y-0.5">
+              {bookmarks.map((bookmark) => (
+                <li key={bookmark.id} className="group flex items-stretch gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate(bookmark.pageNumber)}
+                    className={cn(
+                      'flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+                      bookmark.pageNumber === currentPage
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground hover:bg-muted'
+                    )}
+                  >
+                    <BookmarkIcon className="h-3.5 w-3.5 shrink-0 fill-brass text-brass" />
+                    <span className="truncate">
+                      {bookmark.label || `Page ${bookmark.pageNumber}`}
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {bookmark.pageNumber}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveBookmark(bookmark.id)}
+                    aria-label={`Remove bookmark on page ${bookmark.pageNumber}`}
+                    className="flex w-7 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
+
+        <section aria-label="Table of contents">
+          {outline.length > 0 && bookmarks.length > 0 && (
+            <h4 className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+              Contents
+            </h4>
+          )}
+          {outline.length > 0 ? (
+            <OutlineNodes
+              items={outline}
+              level={0}
+              path=""
+              activePage={activePage}
+              expanded={expanded}
+              onToggle={toggle}
+              onNavigate={onNavigate}
+            />
+          ) : (
+            bookmarks.length === 0 && (
+              <p className="px-2 py-8 text-center text-sm text-muted-foreground">
+                This document has no table of contents.
+              </p>
+            )
+          )}
+        </section>
       </nav>
     </aside>
   );
