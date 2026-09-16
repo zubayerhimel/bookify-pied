@@ -2,6 +2,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Coffee,
+  ListTree,
   Minus,
   Moon,
   Plus,
@@ -9,6 +10,7 @@ import {
   Sun,
   X,
 } from 'lucide-react';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import {
   useCallback,
   useEffect,
@@ -34,6 +36,7 @@ import { getFile, updateReadingProgress } from '@/lib/db/database';
 import type { PDFDocument } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
 import { NotesPanel } from './NotesPanel';
+import { OutlineSidebar, type TocItem } from './OutlineSidebar';
 import { PageHighlights } from './PageHighlights';
 import { SelectionToolbar } from './SelectionToolbar';
 
@@ -45,6 +48,45 @@ interface PDFReaderProps {
   document: PDFDocument;
   initialPage?: number;
   onClose: () => void;
+}
+
+// Resolve a pdf.js outline destination to a 1-based page number.
+async function resolveOutlinePage(
+  pdf: PDFDocumentProxy,
+  dest: string | unknown[] | null
+): Promise<number | null> {
+  try {
+    let explicit: unknown[] | null = null;
+    if (typeof dest === 'string') {
+      explicit = await pdf.getDestination(dest);
+    } else if (Array.isArray(dest)) {
+      explicit = dest;
+    }
+    const ref = explicit?.[0];
+    if (!ref) return null;
+    const pageIndex = await pdf.getPageIndex(
+      ref as Parameters<PDFDocumentProxy['getPageIndex']>[0]
+    );
+    return pageIndex + 1;
+  } catch {
+    return null;
+  }
+}
+
+type RawOutline = Awaited<ReturnType<PDFDocumentProxy['getOutline']>>;
+type RawOutlineItem = RawOutline extends (infer T)[] ? T : never;
+
+async function buildToc(
+  pdf: PDFDocumentProxy,
+  items: RawOutlineItem[]
+): Promise<TocItem[]> {
+  return Promise.all(
+    items.map(async (item) => ({
+      title: item.title,
+      pageNumber: await resolveOutlinePage(pdf, item.dest),
+      items: item.items?.length ? await buildToc(pdf, item.items) : [],
+    }))
+  );
 }
 
 export function PDFReader({
@@ -73,6 +115,8 @@ export function PDFReader({
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [showOutline, setShowOutline] = useState(false);
+  const [outline, setOutline] = useState<TocItem[]>([]);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const [readyRenderKey, setReadyRenderKey] = useState<string | null>(null);
   const [selection, setSelection] = useState<{
@@ -173,6 +217,27 @@ export function PDFReader({
   const pageRenderKey = `${doc.id}-${currentPage}-${renderedPageWidth}`;
   const isPageReady = readyRenderKey === pageRenderKey;
 
+  const handleDocumentLoad = useCallback(async (pdf: PDFDocumentProxy) => {
+    setNumPages(pdf.numPages);
+    try {
+      const raw = await pdf.getOutline();
+      setOutline(raw?.length ? await buildToc(pdf, raw) : []);
+    } catch {
+      setOutline([]);
+    }
+  }, []);
+
+  const goToPage = useCallback(
+    (page: number) => {
+      const max = numPages || page;
+      setCurrentPage(Math.max(1, Math.min(max, page)));
+      if (window.matchMedia('(max-width: 1023px)').matches) {
+        setShowOutline(false);
+      }
+    },
+    [numPages]
+  );
+
   // Auto-hide toolbar
   const handleMouseMove = useCallback(() => {
     setShowToolbar(true);
@@ -236,6 +301,10 @@ export function PDFReader({
           e.preventDefault();
           break;
         case 'Escape':
+          if (showOutline) {
+            setShowOutline(false);
+            break;
+          }
           onClose();
           break;
         case '+':
@@ -250,7 +319,7 @@ export function PDFReader({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [numPages, onClose]);
+  }, [numPages, onClose, showOutline]);
 
   // Handle text selection
   const handleTextSelection = useCallback(() => {
@@ -354,6 +423,7 @@ export function PDFReader({
       <div
         className={cn(
           'reader-toolbar fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-soft px-4 py-2 transition-opacity duration-200',
+          showOutline && 'lg:left-80',
           showNotesPanel && 'lg:right-96',
           !showToolbar && 'opacity-0 pointer-events-none'
         )}
@@ -368,7 +438,19 @@ export function PDFReader({
               aria-label="Back to library"
             >
               <X className="w-5 h-5" />
-            </Button>
+            </Button>{' '}
+            {outline.length > 0 && (
+              <Button
+                variant={showOutline ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => setShowOutline((open) => !open)}
+                aria-label={showOutline ? 'Hide contents' : 'Show contents'}
+                aria-pressed={showOutline}
+                title="Table of contents"
+              >
+                <ListTree className="w-5 h-5" />
+              </Button>
+            )}{' '}
             <h2 className="font-medium text-foreground truncate max-w-50 sm:max-w-75">
               {doc.title}
             </h2>
@@ -497,7 +579,8 @@ export function PDFReader({
       {/* Progress Bar */}
       <div
         className={cn(
-          'fixed top-14.25 left-0 right-0 z-40 h-1 bg-muted transition-[right] duration-300',
+          'fixed top-14.25 left-0 right-0 z-40 h-1 bg-muted transition-[left,right] duration-300',
+          showOutline && 'lg:left-80',
           showNotesPanel && 'lg:right-96'
         )}
       >
@@ -512,6 +595,7 @@ export function PDFReader({
         ref={containerRef}
         className={cn(
           'h-full pt-16 pb-20 overflow-x-auto overflow-y-scroll custom-scrollbar',
+          showOutline && 'lg:pl-80',
           showNotesPanel && 'lg:pr-96'
         )}
       >
@@ -519,7 +603,7 @@ export function PDFReader({
           {pdfData && renderedPageWidth !== null && (
             <Document
               file={pdfData}
-              onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+              onLoadSuccess={handleDocumentLoad}
               loading={null}
             >
               <div
@@ -615,15 +699,21 @@ export function PDFReader({
         />
       )}
 
+      <OutlineSidebar
+        open={showOutline}
+        outline={outline}
+        currentPage={currentPage}
+        onClose={() => setShowOutline(false)}
+        onNavigate={goToPage}
+      />
+
       <NotesPanel
         open={showNotesPanel}
         currentPage={currentPage}
         notes={notes}
         onClose={() => setShowNotesPanel(false)}
         onAddNote={() => setShowNoteDialog(true)}
-        onJumpToPage={(page) =>
-          setCurrentPage(Math.max(1, Math.min(numPages || page, page)))
-        }
+        onJumpToPage={(page) => goToPage(page)}
         onUpdateNote={updateNote}
         onDeleteNote={removeNote}
       />
