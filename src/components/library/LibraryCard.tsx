@@ -1,19 +1,6 @@
-import { useState, useCallback } from 'react';
-import { MoreVertical, Pencil, Trash2, Clock, FileText } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { formatDistanceToNow } from 'date-fns';
+import { Clock, FileText, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,18 +12,36 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import type { PDFDocument } from '@/lib/db/types';
-import { useLibrary } from '@/hooks/useLibrary';
-import { formatDistanceToNow } from 'date-fns';
 
 interface LibraryCardProps {
   document: PDFDocument;
   onOpen: (doc: PDFDocument) => void;
+  onRename: (id: string, newTitle: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
-  const { renameDocument, deleteDocument } = useLibrary();
+export function LibraryCard({
+  document: doc,
+  onOpen,
+  onRename,
+  onDelete,
+}: LibraryCardProps) {
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [newTitle, setNewTitle] = useState(doc.title);
@@ -45,15 +50,15 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
 
   const handleRename = useCallback(async () => {
     if (newTitle.trim() && newTitle !== doc.title) {
-      await renameDocument(doc.id, newTitle.trim());
+      await onRename(doc.id, newTitle.trim());
     }
     setIsRenameOpen(false);
-  }, [doc.id, doc.title, newTitle, renameDocument]);
+  }, [doc.id, doc.title, newTitle, onRename]);
 
   const handleDelete = useCallback(async () => {
-    await deleteDocument(doc.id);
+    await onDelete(doc.id);
     setIsDeleteOpen(false);
-  }, [doc.id, deleteDocument]);
+  }, [doc.id, onDelete]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -63,9 +68,7 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
 
   return (
     <>
-      <div
-        className="book-card relative bg-card cursor-pointer group hover:-translate-y-1 transition-transform duration-200"
-      >
+      <div className="book-card relative bg-card cursor-pointer group hover:-translate-y-1 transition-transform duration-200">
         <button
           type="button"
           className="absolute inset-0 z-10"
@@ -96,7 +99,9 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
-              <p className="text-xs text-white/90 mt-1">{progressPercent}% complete</p>
+              <p className="text-xs text-white/90 mt-1">
+                {progressPercent}% complete
+              </p>
             </div>
           )}
 
@@ -112,7 +117,10 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <DropdownMenuItem onClick={() => setIsRenameOpen(true)}>
                   <Pencil className="w-4 h-4 mr-2" />
                   Rename
@@ -146,7 +154,9 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
             <Clock className="w-3 h-3" />
             <span>
-              {formatDistanceToNow(new Date(doc.lastOpened), { addSuffix: true })}
+              {formatDistanceToNow(new Date(doc.lastOpened), {
+                addSuffix: true,
+              })}
             </span>
           </div>
         </div>
@@ -179,8 +189,8 @@ export function LibraryCard({ document: doc, onOpen }: LibraryCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete "{doc.title}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this document and all associated highlights, quotes, and notes.
-              This action cannot be undone.
+              This will permanently delete this document and all associated
+              highlights, quotes, and notes. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

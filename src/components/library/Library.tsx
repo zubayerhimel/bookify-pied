@@ -8,7 +8,15 @@ import { LibraryCard } from './LibraryCard';
 import { LibraryEmptyState } from './LibraryEmptyState';
 
 export function Library() {
-  const { documents, loading, uploading, error, uploadDocument } = useLibrary();
+  const {
+    documents,
+    loading,
+    uploading,
+    error,
+    uploadDocument,
+    renameDocument,
+    deleteDocument,
+  } = useLibrary();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -104,7 +112,12 @@ export function Library() {
         <div className="library-grid">
           {documents.map((doc) => (
             <div key={doc.id}>
-              <LibraryCard document={doc} onOpen={handleOpenDocument} />
+              <LibraryCard
+                document={doc}
+                onOpen={handleOpenDocument}
+                onRename={renameDocument}
+                onDelete={deleteDocument}
+              />
             </div>
           ))}
         </div>

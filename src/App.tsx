@@ -1,14 +1,14 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
-import { Header } from "@/components/layout/Header";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import DashboardPage from "./pages/DashboardPage";
-import ReaderPage from "./pages/ReaderPage";
-import NotFound from "./pages/NotFound";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { Header } from '@/components/layout/Header';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import DashboardPage from './pages/DashboardPage';
+import Index from './pages/Index';
+import NotFound from './pages/NotFound';
+import ReaderPage from './pages/ReaderPage';
 
 const queryClient = new QueryClient();
 
