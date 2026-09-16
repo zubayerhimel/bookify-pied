@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { StickyNote, Trash2, Check, Pencil, X, Plus } from 'lucide-react';
+import { Check, Pencil, Plus, StickyNote, Trash2, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { Note } from '@/lib/db/types';
@@ -34,7 +34,9 @@ export function NotesPanel({
     () =>
       [...notes].sort((a, b) => {
         if (a.pageNumber !== b.pageNumber) return a.pageNumber - b.pageNumber;
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       }),
     [notes]
   );
@@ -61,7 +63,7 @@ export function NotesPanel({
       aria-label="Notes panel"
       aria-hidden={!open}
       className={cn(
-        'reader-notes-panel fixed top-0 right-0 z-[60] h-full w-full max-w-sm bg-card border-l shadow-medium transition-transform duration-300 flex flex-col',
+        'reader-notes-panel fixed top-0 right-0 z-60 h-full w-full max-w-sm bg-card border-l shadow-medium transition-transform duration-300 flex flex-col',
         open ? 'translate-x-0' : 'translate-x-full pointer-events-none'
       )}
     >
@@ -84,7 +86,12 @@ export function NotesPanel({
             <Plus className="w-4 h-4" />
             <span>Add</span>
           </Button>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close notes panel">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close notes panel"
+          >
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -96,7 +103,7 @@ export function NotesPanel({
             <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center">
               <StickyNote className="w-6 h-6 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground max-w-[220px]">
+            <p className="text-sm text-muted-foreground max-w-55">
               No notes yet. Add a note to remember your thoughts on any page.
             </p>
             <Button size="sm" onClick={onAddNote} className="gap-1.5 mt-1">
@@ -194,15 +201,18 @@ export function NotesPanel({
                     autoFocus
                   />
                 ) : (
-                  <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+                  <p className="text-sm text-foreground whitespace-pre-wrap wrap-break-word">
                     {note.content}
                   </p>
                 )}
 
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-2">
-                  {formatDistanceToNow(new Date(note.updatedAt ?? note.createdAt), {
-                    addSuffix: true,
-                  })}
+                  {formatDistanceToNow(
+                    new Date(note.updatedAt ?? note.createdAt),
+                    {
+                      addSuffix: true,
+                    }
+                  )}
                 </p>
               </div>
             );
