@@ -6,6 +6,7 @@ import {
   Minus,
   Moon,
   Plus,
+  Search,
   StickyNote,
   Sun,
   X,
@@ -33,6 +34,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAnnotations } from '@/hooks/useAnnotations';
+import { useDocumentSearch } from '@/hooks/useDocumentSearch';
 import { type ReadingMode, useReadingMode } from '@/hooks/useReadingMode';
 import { getFile, updateReadingProgress } from '@/lib/db/database';
 import type { PDFDocument } from '@/lib/db/types';
@@ -40,6 +42,8 @@ import { cn } from '@/lib/utils';
 import { NotesPanel } from './NotesPanel';
 import { OutlineSidebar, type TocItem } from './OutlineSidebar';
 import { PageHighlights } from './PageHighlights';
+import { buildPageTextIndex, findMatches, matchToSegments } from './pdfSearch';
+import { SearchBar } from './SearchBar';
 import { SelectionToolbar } from './SelectionToolbar';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -50,6 +54,15 @@ interface PDFReaderProps {
   document: PDFDocument;
   initialPage?: number;
   onClose: () => void;
+}
+
+interface SearchBox {
+  id: number;
+  active: boolean;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 }
 
 // Resolve a pdf.js outline destination to a 1-based page number.
@@ -120,6 +133,9 @@ export function PDFReader({
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
   const [outline, setOutline] = useState<TocItem[]>([]);
+  const [pdfProxy, setPdfProxy] = useState<PDFDocumentProxy | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchBoxes, setSearchBoxes] = useState<SearchBox[]>([]);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const [readyRenderKey, setReadyRenderKey] = useState<string | null>(null);
   const [selection, setSelection] = useState<{
@@ -134,6 +150,7 @@ export function PDFReader({
   );
   const skipPageCommitRef = useRef(false);
   const pageRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -221,6 +238,7 @@ export function PDFReader({
   const isPageReady = readyRenderKey === pageRenderKey;
 
   const handleDocumentLoad = useCallback(async (pdf: PDFDocumentProxy) => {
+    setPdfProxy(pdf);
     setNumPages(pdf.numPages);
     try {
       const raw = await pdf.getOutline();
@@ -240,6 +258,158 @@ export function PDFReader({
     },
     [numPages]
   );
+
+  const search = useDocumentSearch({
+    pdf: pdfProxy,
+    numPages,
+    currentPage,
+    onNavigate: goToPage,
+  });
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    clear: clearSearch,
+    prefetch: prefetchSearch,
+    indexing: searchIndexing,
+    total: searchTotal,
+    activeOrdinal: searchOrdinal,
+    next: nextMatch,
+    prev: prevMatch,
+    currentPageMatches: searchPageMatches,
+  } = search;
+
+  const openSearch = useCallback(() => {
+    setShowSearch(true);
+    prefetchSearch();
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    });
+  }, [prefetchSearch]);
+
+  const closeSearch = useCallback(() => {
+    setShowSearch(false);
+    clearSearch();
+  }, [clearSearch]);
+
+  // Open in-document search with Ctrl/Cmd+F (overrides the browser find).
+  useEffect(() => {
+    const handleFindKey = (event: KeyboardEvent) => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        (event.key === 'f' || event.key === 'F')
+      ) {
+        event.preventDefault();
+        openSearch();
+      }
+    };
+    window.addEventListener('keydown', handleFindKey);
+    return () => window.removeEventListener('keydown', handleFindKey);
+  }, [openSearch]);
+
+  // Draw search-match overlays on the current page. Positions come from the
+  // rendered text-layer spans so they always line up with what the reader sees.
+  // The text layer renders asynchronously, so poll until the current page's is in.
+  useEffect(() => {
+    const pageEl = pageRef.current;
+    const query = searchQuery.trim().toLowerCase();
+    if (!pageEl || !query || renderedPageWidth === null) {
+      setSearchBoxes([]);
+      return;
+    }
+
+    let cancelled = false;
+    let frame = 0;
+    let attempts = 0;
+
+    const compute = () => {
+      if (cancelled) return;
+      const rendered = Number(
+        pageEl
+          .querySelector('.react-pdf__Page')
+          ?.getAttribute('data-page-number')
+      );
+      const textLayer = pageEl.querySelector(
+        '.react-pdf__Page__textContent, .textLayer'
+      );
+      const spans = textLayer
+        ? Array.from(textLayer.querySelectorAll('span')).filter(
+            (span) => (span.textContent?.length ?? 0) > 0
+          )
+        : [];
+
+      // Wait until the current page's text layer is actually in the DOM.
+      if (
+        (!Number.isNaN(rendered) && rendered !== currentPage) ||
+        spans.length === 0
+      ) {
+        if (attempts++ < 90) frame = requestAnimationFrame(compute);
+        else setSearchBoxes([]);
+        return;
+      }
+
+      const index = buildPageTextIndex(
+        spans.map((span) => ({ str: span.textContent ?? '' }))
+      );
+      const pageRect = pageEl.getBoundingClientRect();
+      const boxes: SearchBox[] = [];
+
+      findMatches(index, query).forEach((match, matchIndex) => {
+        const info = searchPageMatches[matchIndex];
+        const active = info?.active ?? false;
+        const id = info?.id ?? matchIndex;
+        for (const segment of matchToSegments(index, match)) {
+          const node = spans[segment.itemIndex]?.firstChild;
+          if (!node || node.nodeType !== Node.TEXT_NODE) continue;
+          const textLength = node.textContent?.length ?? 0;
+          const start = Math.min(segment.start, textLength);
+          const end = Math.min(segment.end, textLength);
+          if (end <= start) continue;
+
+          const range = document.createRange();
+          try {
+            range.setStart(node, start);
+            range.setEnd(node, end);
+          } catch {
+            continue;
+          }
+          for (const rect of Array.from(range.getClientRects())) {
+            if (rect.width === 0 || rect.height === 0) continue;
+            boxes.push({
+              id,
+              active,
+              left: ((rect.left - pageRect.left) / pageRect.width) * 100,
+              top: ((rect.top - pageRect.top) / pageRect.height) * 100,
+              width: (rect.width / pageRect.width) * 100,
+              height: (rect.height / pageRect.height) * 100,
+            });
+          }
+        }
+      });
+      setSearchBoxes(boxes);
+    };
+
+    frame = requestAnimationFrame(compute);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [searchQuery, searchPageMatches, currentPage, renderedPageWidth]);
+
+  // Keep the active match centered as it changes.
+  useEffect(() => {
+    if (!showSearch || searchBoxes.length === 0) return;
+    const raf = requestAnimationFrame(() => {
+      containerRef.current
+        ?.querySelector('[data-search-active="true"]')
+        ?.scrollIntoView({
+          block: 'center',
+          inline: 'center',
+          behavior: 'smooth',
+        });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [searchBoxes, showSearch]);
 
   // Auto-hide toolbar
   const handleMouseMove = useCallback(() => {
@@ -304,6 +474,10 @@ export function PDFReader({
           e.preventDefault();
           break;
         case 'Escape':
+          if (showSearch) {
+            closeSearch();
+            break;
+          }
           if (showOutline) {
             setShowOutline(false);
             break;
@@ -322,7 +496,7 @@ export function PDFReader({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [numPages, onClose, showOutline]);
+  }, [numPages, onClose, showOutline, showSearch, closeSearch]);
 
   // Handle text selection
   const handleTextSelection = useCallback((event: MouseEvent) => {
@@ -514,6 +688,16 @@ export function PDFReader({
           {/* Right: Controls */}
           <div className="flex items-center gap-1">
             <Button
+              variant={showSearch ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={() => (showSearch ? closeSearch() : openSearch())}
+              aria-label="Find in document"
+              aria-pressed={showSearch}
+              title="Find in document (⌘/Ctrl+F)"
+            >
+              <Search className="w-4 h-4" />
+            </Button>
+            <Button
               variant={showNotesPanel ? 'secondary' : 'ghost'}
               size="sm"
               className="gap-2 relative"
@@ -640,6 +824,28 @@ export function PDFReader({
                   renderAnnotationLayer={true}
                 />
                 <PageHighlights highlights={pageHighlights} />
+                {searchBoxes.length > 0 && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    {searchBoxes.map((box) => (
+                      <div
+                        key={`${box.id}-${box.left}-${box.top}-${box.width}`}
+                        data-search-active={box.active ? 'true' : undefined}
+                        className={cn(
+                          'absolute rounded-[2px] mix-blend-multiply dark:mix-blend-screen',
+                          box.active
+                            ? 'bg-brass/50 ring-1 ring-brass/80'
+                            : 'bg-brass/25'
+                        )}
+                        style={{
+                          left: `${box.left}%`,
+                          top: `${box.top}%`,
+                          width: `${box.width}%`,
+                          height: `${box.height}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </Document>
           )}
@@ -714,6 +920,27 @@ export function PDFReader({
           onAddNote={handleAddNote}
           onClose={() => setSelection(null)}
         />
+      )}
+
+      {showSearch && (
+        <div
+          className={cn(
+            'fixed top-20 right-4 z-50 transition-[right] duration-300',
+            showNotesPanel && 'lg:right-100'
+          )}
+        >
+          <SearchBar
+            ref={searchInputRef}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            total={searchTotal}
+            activeOrdinal={searchOrdinal}
+            indexing={searchIndexing}
+            onNext={nextMatch}
+            onPrev={prevMatch}
+            onClose={closeSearch}
+          />
+        </div>
       )}
 
       <OutlineSidebar
