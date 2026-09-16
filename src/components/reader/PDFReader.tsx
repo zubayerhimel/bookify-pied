@@ -19,6 +19,8 @@ import {
   useState,
 } from 'react';
 import { Document, Page } from 'react-pdf';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -95,6 +97,7 @@ export function PDFReader({
   onClose,
 }: PDFReaderProps) {
   const { mode, setMode } = useReadingMode();
+  const navigate = useNavigate();
   const {
     notes,
     addHighlight,
@@ -379,10 +382,16 @@ export function PDFReader({
 
   const handleSaveQuote = useCallback(async () => {
     if (!selection) return;
-    await addQuote(currentPage, selection.text);
+    const quote = await addQuote(currentPage, selection.text);
     window.getSelection()?.removeAllRanges();
     setSelection(null);
-  }, [selection, currentPage, addQuote]);
+    if (quote) {
+      toast.success('Quote saved', {
+        description: 'Find all your quotes under Quotes & Notes.',
+        action: { label: 'View', onClick: () => navigate('/dashboard') },
+      });
+    }
+  }, [selection, currentPage, addQuote, navigate]);
 
   const handleAddNote = useCallback(
     async (content: string) => {
