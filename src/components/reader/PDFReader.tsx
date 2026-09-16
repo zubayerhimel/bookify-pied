@@ -6,6 +6,7 @@ import {
   ListTree,
   Minus,
   Moon,
+  MoreVertical,
   Plus,
   Search,
   StickyNote,
@@ -32,6 +33,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAnnotations } from '@/hooks/useAnnotations';
@@ -632,21 +639,23 @@ export function PDFReader({
           !showToolbar && 'opacity-0 pointer-events-none'
         )}
       >
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
-          {/* Left: Close & Title */}
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-1 sm:gap-2 max-w-6xl mx-auto">
+          {/* Left: Close, Nav & Title */}
+          <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
             <Button
               variant="ghost"
               size="icon"
+              className="shrink-0"
               onClick={onClose}
               aria-label="Back to library"
             >
               <X className="w-5 h-5" />
-            </Button>{' '}
+            </Button>
             {(outline.length > 0 || bookmarks.length > 0) && (
               <Button
                 variant={showOutline ? 'secondary' : 'ghost'}
                 size="icon"
+                className="shrink-0"
                 onClick={() => setShowOutline((open) => !open)}
                 aria-label={showOutline ? 'Hide navigation' : 'Show navigation'}
                 aria-pressed={showOutline}
@@ -654,14 +663,14 @@ export function PDFReader({
               >
                 <ListTree className="w-5 h-5" />
               </Button>
-            )}{' '}
-            <h2 className="font-medium text-foreground truncate max-w-50 sm:max-w-75">
+            )}
+            <h2 className="min-w-0 truncate font-medium text-foreground">
               {doc.title}
             </h2>
           </div>
 
           {/* Center: Page Navigation */}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -699,7 +708,7 @@ export function PDFReader({
           </div>
 
           {/* Right: Controls */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -764,7 +773,7 @@ export function PDFReader({
             </Button>
 
             {/* Reading Mode Toggle */}
-            <div className="flex items-center border rounded-full p-1 gap-0.5">
+            <div className="hidden sm:flex items-center border rounded-full p-1 gap-0.5">
               {(['light', 'sepia', 'dark'] as ReadingMode[]).map((m) => {
                 const Icon = modeIcons[m];
                 return (
@@ -809,6 +818,77 @@ export function PDFReader({
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+
+            {/* Overflow menu: reading mode (mobile) + zoom (mobile & tablet) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
+                  aria-label="More options"
+                  title="More"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="sm:hidden">
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Reading mode
+                  </div>
+                  <div className="flex items-center gap-1 px-2 pb-1.5">
+                    {(['light', 'sepia', 'dark'] as ReadingMode[]).map((m) => {
+                      const Icon = modeIcons[m];
+                      return (
+                        <button
+                          type="button"
+                          key={m}
+                          onClick={() => setMode(m)}
+                          aria-label={`${m} mode`}
+                          aria-pressed={mode === m}
+                          className={cn(
+                            'flex h-9 flex-1 items-center justify-center rounded-md transition-colors',
+                            mode === m
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-muted'
+                          )}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <DropdownMenuSeparator />
+                </div>
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                  Zoom
+                </div>
+                <div className="flex items-center justify-between gap-2 px-2 pb-1.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}
+                    aria-label="Zoom out"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {Math.round(scale * 100)}%
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={() => setScale((s) => Math.min(2, s + 0.1))}
+                    aria-label="Zoom in"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
