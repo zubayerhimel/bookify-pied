@@ -30,30 +30,35 @@ export function useLibrary() {
   }, [loadDocuments]);
 
   const generateThumbnail = useCallback(async (pdf: Awaited<ReturnType<typeof pdfjs.getDocument>["promise"]>): Promise<string> => {
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 0.5 });
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) return "";
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    const renderTask = page.render({ canvas, canvasContext: context, viewport });
+    // Swallow a late cancellation rejection so it never surfaces as unhandled.
+    void renderTask.promise.catch(() => {});
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const page = await pdf.getPage(1);
-
-      const scale = 0.5;
-      const viewport = page.getViewport({ scale });
-
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-
-      if (!context) throw new Error("Could not get canvas context");
-
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      await page.render({
-        canvas,
-        canvasContext: context,
-        viewport,
-      }).promise;
-
+      await Promise.race([
+        renderTask.promise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("Thumbnail render timed out")), 8000);
+        }),
+      ]);
       return canvas.toDataURL("image/jpeg", 0.7);
     } catch (err) {
       console.error("Error generating thumbnail:", err);
+      renderTask.cancel();
       return "";
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }, []);
 
@@ -68,7 +73,6 @@ export function useLibrary() {
         loadingTask = pdfjs.getDocument({ url: objectUrl });
         const pdf = await loadingTask.promise;
         const totalPages = pdf.numPages;
-        const thumbnail = await generateThumbnail(pdf);
 
         const id = uuidv4();
         const now = new Date();
@@ -83,24 +87,37 @@ export function useLibrary() {
           scrollPosition: 0,
           lastOpened: now,
           createdAt: now,
-          coverThumbnail: thumbnail,
         };
 
+        // Persist first so a slow or failed cover render never blocks the import.
         await saveDocumentWithFile(doc, { id, data: file });
-
         setDocuments((prev) => [doc, ...prev]);
+
+        // Render the cover off the critical path and fill it in when ready.
+        const task = loadingTask;
+        void generateThumbnail(pdf)
+          .then(async (thumbnail) => {
+            if (!thumbnail) return;
+            const existing = await getDocument(id);
+            if (!existing) return; // deleted before the cover finished
+            await saveDocument({ ...existing, coverThumbnail: thumbnail });
+            setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, coverThumbnail: thumbnail } : d)));
+          })
+          .catch((err) => console.error("Error generating thumbnail:", err))
+          .finally(() => {
+            task?.destroy();
+            URL.revokeObjectURL(objectUrl);
+          });
+
         return doc;
       } catch (err) {
         console.error("Error uploading document:", err);
         setError(err instanceof DOMException && err.name === "QuotaExceededError" ? "Not enough browser storage is available for this PDF." : "Failed to upload PDF.");
+        loadingTask?.destroy();
+        URL.revokeObjectURL(objectUrl);
         return null;
       } finally {
-        try {
-          await loadingTask?.destroy();
-        } finally {
-          URL.revokeObjectURL(objectUrl);
-          setUploading(false);
-        }
+        setUploading(false);
       }
     },
     [generateThumbnail],
