@@ -369,7 +369,7 @@ export function PDFReader({
             >
               <X className="w-5 h-5" />
             </Button>
-            <h2 className="font-medium text-foreground truncate max-w-[200px] sm:max-w-[300px]">
+            <h2 className="font-medium text-foreground truncate max-w-50 sm:max-w-75">
               {doc.title}
             </h2>
           </div>
@@ -384,7 +384,7 @@ export function PDFReader({
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
-            <div className="flex min-w-[118px] items-center justify-center gap-1.5 text-sm text-muted-foreground">
+            <div className="flex min-w-29.5 items-center justify-center gap-1.5 text-sm text-muted-foreground">
               <span>Page</span>
               <Input
                 type="number"
@@ -477,7 +477,7 @@ export function PDFReader({
               >
                 <Minus className="w-4 h-4" />
               </Button>
-              <span className="text-sm text-muted-foreground min-w-[50px] text-center">
+              <span className="text-sm text-muted-foreground min-w-12.5 text-center">
                 {Math.round(scale * 100)}%
               </span>
               <Button
@@ -497,7 +497,7 @@ export function PDFReader({
       {/* Progress Bar */}
       <div
         className={cn(
-          'fixed top-[57px] left-0 right-0 z-40 h-1 bg-muted transition-[right] duration-300',
+          'fixed top-14.25 left-0 right-0 z-40 h-1 bg-muted transition-[right] duration-300',
           showNotesPanel && 'lg:right-96'
         )}
       >
@@ -512,7 +512,7 @@ export function PDFReader({
         ref={containerRef}
         className={cn(
           'h-full pt-16 pb-20 overflow-x-auto overflow-y-scroll custom-scrollbar',
-          showNotesPanel && 'lg:pr-[24rem]'
+          showNotesPanel && 'lg:pr-96'
         )}
       >
         <div className="relative flex justify-center py-8 px-4 min-h-full">

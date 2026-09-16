@@ -1,25 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  Quote as QuoteIcon,
-  StickyNote,
-  FileText,
   Calendar,
-  Trash2,
   ChevronRight,
+  FileText,
   Filter,
+  Quote as QuoteIcon,
   Search,
+  StickyNote,
+  Trash2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,15 +21,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Quote, Note, PDFDocument } from '@/lib/db/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
-  getAllQuotes,
-  getAllNotes,
-  getAllDocuments,
-  deleteQuote,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
   deleteNote,
+  deleteQuote,
+  getAllDocuments,
+  getAllNotes,
+  getAllQuotes,
 } from '@/lib/db/database';
-import { useNavigate } from 'react-router-dom';
+import type { Note, PDFDocument, Quote } from '@/lib/db/types';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -48,7 +48,10 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPdfId, setFilterPdfId] = useState<string>('all');
-  const [deleteItem, setDeleteItem] = useState<{ type: 'quote' | 'note'; id: string } | null>(null);
+  const [deleteItem, setDeleteItem] = useState<{
+    type: 'quote' | 'note';
+    id: string;
+  } | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -76,7 +79,8 @@ export function Dashboard() {
     return quotes.filter((q) => {
       const matchesPdf = filterPdfId === 'all' || q.pdfId === filterPdfId;
       const matchesSearch =
-        !searchQuery || q.text.toLowerCase().includes(searchQuery.toLowerCase());
+        !searchQuery ||
+        q.text.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesPdf && matchesSearch;
     });
   }, [quotes, filterPdfId, searchQuery]);
@@ -116,7 +120,7 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
@@ -145,7 +149,7 @@ export function Dashboard() {
           />
         </div>
         <Select value={filterPdfId} onValueChange={setFilterPdfId}>
-          <SelectTrigger className="w-full sm:w-[200px]">
+          <SelectTrigger className="w-full sm:w-50">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Filter by document" />
           </SelectTrigger>
@@ -196,7 +200,9 @@ export function Dashboard() {
                         <span>Page {quote.pageNumber}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5" />
-                          {formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(quote.createdAt), {
+                            addSuffix: true,
+                          })}
                         </span>
                       </div>
                     </div>
@@ -205,7 +211,9 @@ export function Dashboard() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => handleNavigateToPage(quote.pdfId, quote.pageNumber)}
+                        onClick={() =>
+                          handleNavigateToPage(quote.pdfId, quote.pageNumber)
+                        }
                       >
                         <ChevronRight className="w-4 h-4" />
                       </Button>
@@ -213,7 +221,9 @@ export function Dashboard() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteItem({ type: 'quote', id: quote.id })}
+                        onClick={() =>
+                          setDeleteItem({ type: 'quote', id: quote.id })
+                        }
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -251,7 +261,9 @@ export function Dashboard() {
                         <span>Page {note.pageNumber}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5" />
-                          {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(note.createdAt), {
+                            addSuffix: true,
+                          })}
                         </span>
                       </div>
                     </div>
@@ -260,7 +272,9 @@ export function Dashboard() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => handleNavigateToPage(note.pdfId, note.pageNumber)}
+                        onClick={() =>
+                          handleNavigateToPage(note.pdfId, note.pageNumber)
+                        }
                       >
                         <ChevronRight className="w-4 h-4" />
                       </Button>
@@ -268,7 +282,9 @@ export function Dashboard() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteItem({ type: 'note', id: note.id })}
+                        onClick={() =>
+                          setDeleteItem({ type: 'note', id: note.id })
+                        }
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -285,11 +301,10 @@ export function Dashboard() {
       <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete this {deleteItem?.type}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Delete this {deleteItem?.type}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The {deleteItem?.type} will be permanently removed.
+              This action cannot be undone. The {deleteItem?.type} will be
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
