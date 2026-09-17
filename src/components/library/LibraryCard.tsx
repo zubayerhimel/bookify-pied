@@ -187,7 +187,9 @@ export function LibraryCard({
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{doc.title}"?</AlertDialogTitle>
+            <AlertDialogTitle className="break-all">
+              Delete "{doc.title}"?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete this document and all associated
               highlights, quotes, and notes. This action cannot be undone.

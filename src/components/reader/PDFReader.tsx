@@ -1062,10 +1062,7 @@ export function PDFReader({
         onClick={() => setShowShortcuts(true)}
         aria-label="Keyboard shortcuts"
         title="Keyboard shortcuts (?)"
-        className={cn(
-          'fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border bg-card/95 text-muted-foreground shadow-medium backdrop-blur-sm transition-opacity duration-200 hover:bg-accent hover:text-foreground sm:bottom-6 sm:right-6',
-          !showToolbar && 'opacity-0 pointer-events-none'
-        )}
+        className="fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-medium transition-colors hover:bg-accent hover:text-foreground sm:bottom-6 sm:right-6"
       >
         <Keyboard className="h-5 w-5" />
       </button>
