@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import DashboardPage from './pages/DashboardPage';
 import Index from './pages/Index';
+import LibraryPage from './pages/LibraryPage';
 import NotFound from './pages/NotFound';
 import ReaderPage from './pages/ReaderPage';
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/read/:id" element={<ReaderPage />} />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Index />} />
+              <Route path="/library" element={<LibraryPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

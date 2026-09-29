@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { path: '/', label: 'Library', icon: BookOpen },
+  { path: '/library', label: 'Library', icon: BookOpen },
   { path: '/dashboard', label: 'Quotes & Notes', icon: Quote },
 ];
 

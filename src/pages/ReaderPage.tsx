@@ -54,7 +54,7 @@ const ReaderPage = () => {
   }, [id]);
 
   const handleClose = useCallback(() => {
-    navigate('/');
+    navigate('/library');
   }, [navigate]);
 
   if (status === 'loading') {

@@ -1,7 +1,7 @@
-import { Library } from "@/components/library/Library";
+import { Landing } from '@/components/landing/Landing';
 
 const Index = () => {
-  return <Library />;
+  return <Landing />;
 };
 
 export default Index;

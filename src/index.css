@@ -421,4 +421,106 @@
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     }
   }
+
+  /* Landing — pressable CTA with real press feedback */
+  .landing-cta {
+    transition:
+      transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 160ms ease,
+      color 160ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .landing-cta:active {
+    transform: scale(0.97);
+  }
+
+  /* Landing — the one memorable moment: a highlighter swipe under a phrase.
+     Uses the reader's actual highlighter ink, so it demonstrates the product. */
+  .hl-swipe {
+    background-image: linear-gradient(
+      hsl(var(--reading-highlight) / 0.62),
+      hsl(var(--reading-highlight) / 0.62)
+    );
+    background-repeat: no-repeat;
+    background-position: 0 82%;
+    background-size: 0% 40%;
+    padding-inline: 0.08em;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    animation: hl-swipe 0.7s cubic-bezier(0.23, 1, 0.32, 1) 0.6s forwards;
+  }
+
+  @keyframes hl-swipe {
+    to {
+      background-size: 100% 40%;
+    }
+  }
+
+  /* Landing — single orchestrated entrance for the hero (no scattered fades) */
+  .hero-reveal > * {
+    opacity: 0;
+    animation: hero-rise 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  }
+
+  .hero-reveal > *:nth-child(1) {
+    animation-delay: 0.04s;
+  }
+  .hero-reveal > *:nth-child(2) {
+    animation-delay: 0.12s;
+  }
+  .hero-reveal > *:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+  .hero-reveal > *:nth-child(4) {
+    animation-delay: 0.28s;
+  }
+
+  .hero-mockup-in {
+    opacity: 0;
+    animation: hero-mockup 0.8s cubic-bezier(0.23, 1, 0.32, 1) 0.24s forwards;
+  }
+
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes hero-mockup {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hl-swipe {
+      background-size: 100% 40%;
+      animation: none;
+    }
+    .hero-reveal > *,
+    .hero-mockup-in {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+  }
+}
+
+/* Smooth in-page anchor scrolling, only on the landing and only when welcome */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.landing-root) {
+    scroll-behavior: smooth;
+  }
 }
