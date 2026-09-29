@@ -436,6 +436,29 @@
     box-shadow: var(--shadow-book);
   }
 
+  /* Reading-mode recolors the rendered page itself, not just the app chrome.
+     Applied to the page image only so highlight/search overlays keep their own
+     blend treatment. */
+  .react-pdf__Page__canvas {
+    transition: filter 200ms ease;
+  }
+
+  .sepia .react-pdf__Page__canvas {
+    filter: sepia(0.5) brightness(0.94) contrast(0.96);
+  }
+
+  .green .react-pdf__Page__canvas {
+    filter: sepia(0.9) hue-rotate(80deg) saturate(0.9) brightness(0.97);
+  }
+
+  .dark .react-pdf__Page__canvas {
+    filter: invert(0.9) hue-rotate(180deg) brightness(0.95);
+  }
+
+  .midnight .react-pdf__Page__canvas {
+    filter: invert(0.94) hue-rotate(180deg) brightness(0.9);
+  }
+
   /* Progress bar styling */
   .reading-progress {
     @apply h-1 rounded-full overflow-hidden;
