@@ -1,42 +1,49 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-export type ReadingMode = 'light' | 'sepia' | 'dark';
+export type ReadingMode = "light" | "sepia" | "green" | "dark" | "midnight";
 
-const STORAGE_KEY = 'kindle-reader-mode';
+// Single source of truth, ordered light → dark for cycling and UI.
+export const READING_MODES: ReadingMode[] = ["light", "sepia", "green", "dark", "midnight"];
+
+const STORAGE_KEY = "kindle-reader-mode";
+
+// The <html> classes each mode applies. 'light' uses the default :root palette.
+// 'midnight' layers over '.dark' so dark: utilities (e.g. highlight blend) still apply.
+const MODE_CLASSES: Record<ReadingMode, string[]> = {
+  light: [],
+  sepia: ["sepia"],
+  green: ["green"],
+  dark: ["dark"],
+  midnight: ["dark", "midnight"],
+};
+const ALL_MODE_CLASSES = ["sepia", "green", "dark", "midnight"];
 
 export function useReadingMode() {
   const [mode, setMode] = useState<ReadingMode>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && ['light', 'sepia', 'dark'].includes(stored)) {
+      if (stored && (READING_MODES as string[]).includes(stored)) {
         return stored as ReadingMode;
       }
     }
-    return 'light';
+    return "light";
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    
-    // Remove all mode classes
-    root.classList.remove('dark', 'sepia');
-    
-    // Apply the current mode
-    if (mode === 'dark') {
-      root.classList.add('dark');
-    } else if (mode === 'sepia') {
-      root.classList.add('sepia');
-    }
-    
+
+    // Reset, then apply the current mode's classes.
+    root.classList.remove(...ALL_MODE_CLASSES);
+    root.classList.add(...MODE_CLASSES[mode]);
+
     // Persist to localStorage
     localStorage.setItem(STORAGE_KEY, mode);
   }, [mode]);
 
   const toggleMode = useCallback(() => {
-    setMode(current => {
-      const modes: ReadingMode[] = ['light', 'sepia', 'dark'];
-      const currentIndex = modes.indexOf(current);
-      return modes[(currentIndex + 1) % modes.length];
+    setMode((current) => {
+      const currentIndex = READING_MODES.indexOf(current);
+      return READING_MODES[(currentIndex + 1) % READING_MODES.length];
     });
   }, []);
 

@@ -10,7 +10,8 @@ export function LibraryEmptyState({ onUploadClick }: LibraryEmptyStateProps) {
     {
       icon: BookOpen,
       title: 'Distraction-free reading',
-      description: 'Light, sepia, and dark modes for comfortable reading',
+      description:
+        'Five reading themes, from bright paper to near-black midnight',
     },
     {
       icon: Highlighter,

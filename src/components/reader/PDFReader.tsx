@@ -4,9 +4,11 @@ import {
   ChevronRight,
   Coffee,
   Keyboard,
+  Leaf,
   ListTree,
   Minus,
   Moon,
+  MoonStar,
   MoreVertical,
   Plus,
   Search,
@@ -44,7 +46,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAnnotations } from '@/hooks/useAnnotations';
 import { useDocumentSearch } from '@/hooks/useDocumentSearch';
-import { type ReadingMode, useReadingMode } from '@/hooks/useReadingMode';
+import {
+  READING_MODES,
+  type ReadingMode,
+  useReadingMode,
+} from '@/hooks/useReadingMode';
 import { getFile, updateReadingProgress } from '@/lib/db/database';
 import type { PDFDocument } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
@@ -654,7 +660,9 @@ export function PDFReader({
   const modeIcons: Record<ReadingMode, typeof Sun> = {
     light: Sun,
     sepia: Coffee,
+    green: Leaf,
     dark: Moon,
+    midnight: MoonStar,
   };
 
   return (
@@ -803,13 +811,17 @@ export function PDFReader({
 
             {/* Reading Mode Toggle */}
             <div className="hidden sm:flex items-center border rounded-full p-1 gap-0.5">
-              {(['light', 'sepia', 'dark'] as ReadingMode[]).map((m) => {
+              {READING_MODES.map((m) => {
                 const Icon = modeIcons[m];
+                const label = m[0].toUpperCase() + m.slice(1);
                 return (
                   <button
                     type="button"
                     key={m}
                     onClick={() => setMode(m)}
+                    title={label}
+                    aria-label={`${label} mode`}
+                    aria-pressed={mode === m}
                     className={cn(
                       'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
                       mode === m
@@ -867,7 +879,7 @@ export function PDFReader({
                     Reading mode
                   </div>
                   <div className="flex items-center gap-1 px-2 pb-1.5">
-                    {(['light', 'sepia', 'dark'] as ReadingMode[]).map((m) => {
+                    {READING_MODES.map((m) => {
                       const Icon = modeIcons[m];
                       return (
                         <button

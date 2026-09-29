@@ -2,8 +2,10 @@ import {
   Bookmark,
   BookOpen,
   Highlighter,
+  Leaf,
   Lock,
   Moon,
+  MoonStar,
   Quote,
   Search,
   StickyNote,
@@ -64,11 +66,25 @@ const readingModes = [
     faint: 'hsl(38 24% 80%)',
   },
   {
+    name: 'Sage',
+    icon: Leaf,
+    surface: 'hsl(124 20% 91%)',
+    ink: 'hsl(165 30% 13%)',
+    faint: 'hsl(130 15% 79%)',
+  },
+  {
     name: 'Night',
     icon: Moon,
     surface: 'hsl(170 22% 8%)',
     ink: 'hsl(44 18% 86%)',
     faint: 'hsl(168 14% 20%)',
+  },
+  {
+    name: 'Midnight',
+    icon: MoonStar,
+    surface: 'hsl(174 24% 4%)',
+    ink: 'hsl(44 16% 88%)',
+    faint: 'hsl(170 16% 14%)',
   },
 ];
 
@@ -234,12 +250,13 @@ export function Landing() {
                 Read in your kind of light.
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                Switch between paper, sepia, and night — whichever is kindest to
-                your eyes right now. Your choice is remembered for next time.
+                Choose from five themes — bright paper, warm sepia, restful
+                sage, deep dark, or near-black midnight — whichever suits the
+                hour. Your choice is remembered for next time.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {readingModes.map((mode) => (
                 <figure
                   key={mode.name}
