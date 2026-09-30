@@ -1,6 +1,14 @@
 import { formatDistanceToNow } from 'date-fns';
-import { Clock, FileText, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import {
+  Clock,
+  Download,
+  FileText,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +35,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import {
+  buildAnnotatedPdf,
+  totalAnnotations,
+  triggerDownload,
+} from '@/lib/annotations-transfer';
 import type { PDFDocument } from '@/lib/db/types';
 
 interface LibraryCardProps {
@@ -59,6 +72,26 @@ export function LibraryCard({
     await onDelete(doc.id);
     setIsDeleteOpen(false);
   }, [doc.id, onDelete]);
+
+  const handleDownload = useCallback(async () => {
+    const toastId = toast.loading('Preparing your download\u2026');
+    try {
+      const { blob, fileName, counts } = await buildAnnotatedPdf(doc.id);
+      triggerDownload(blob, fileName);
+      const total = totalAnnotations(counts);
+      toast.success(
+        total > 0
+          ? `Downloaded with ${total} saved ${total === 1 ? 'annotation' : 'annotations'}`
+          : 'Download ready',
+        { id: toastId }
+      );
+    } catch (err) {
+      console.error('Error exporting document:', err);
+      toast.error('Could not prepare the download. Please try again.', {
+        id: toastId,
+      });
+    }
+  }, [doc.id]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -121,6 +154,10 @@ export function LibraryCard({
                 align="end"
                 onClick={(e) => e.stopPropagation()}
               >
+                <DropdownMenuItem onClick={handleDownload}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download with notes
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setIsRenameOpen(true)}>
                   <Pencil className="w-4 h-4 mr-2" />
                   Rename

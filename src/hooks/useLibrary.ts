@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { pdfjs } from "react-pdf";
+import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
+import { extractAnnotationBundle, restoreAnnotations, totalAnnotations } from "@/lib/annotations-transfer";
 import { deleteDocument as dbDeleteDocument, getAllDocuments, getDocument, saveDocument, saveDocumentWithFile } from "@/lib/db/database";
 import type { PDFDocument } from "@/lib/db/types";
 import "@/lib/pdf-worker";
@@ -40,7 +42,11 @@ export function useLibrary() {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
 
-    const renderTask = page.render({ canvas, canvasContext: context, viewport });
+    const renderTask = page.render({
+      canvas,
+      canvasContext: context,
+      viewport,
+    });
     // Swallow a late cancellation rejection so it never surfaces as unhandled.
     void renderTask.promise.catch(() => {});
 
@@ -74,6 +80,10 @@ export function useLibrary() {
         const pdf = await loadingTask.promise;
         const totalPages = pdf.numPages;
 
+        // Restore embedded annotations if this PDF was exported from the app.
+        const bundle = await extractAnnotationBundle(file).catch(() => null);
+        const resumePage = bundle?.document?.currentPage;
+
         const id = uuidv4();
         const now = new Date();
 
@@ -83,7 +93,7 @@ export function useLibrary() {
           fileName: file.name,
           fileSize: file.size,
           totalPages,
-          currentPage: 1,
+          currentPage: resumePage && resumePage >= 1 && resumePage <= totalPages ? resumePage : 1,
           scrollPosition: 0,
           lastOpened: now,
           createdAt: now,
@@ -92,6 +102,18 @@ export function useLibrary() {
         // Persist first so a slow or failed cover render never blocks the import.
         await saveDocumentWithFile(doc, { id, data: file });
         setDocuments((prev) => [doc, ...prev]);
+
+        if (bundle) {
+          try {
+            const counts = await restoreAnnotations(id, bundle);
+            const restored = totalAnnotations(counts);
+            if (restored > 0) {
+              toast.success(`Restored ${restored} ${restored === 1 ? "annotation" : "annotations"} from ${doc.title}`);
+            }
+          } catch (restoreErr) {
+            console.error("Error restoring annotations:", restoreErr);
+          }
+        }
 
         // Render the cover off the critical path and fill it in when ready.
         const task = loadingTask;
