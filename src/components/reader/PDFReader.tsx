@@ -163,6 +163,109 @@ async function buildToc(
   );
 }
 
+const VIEW_PREF_KEY = 'pdf-reader-view';
+type ViewMode = 'single' | 'continuous';
+
+function readViewMode(): ViewMode {
+  if (typeof window === 'undefined') return 'single';
+  try {
+    return localStorage.getItem(VIEW_PREF_KEY) === 'continuous'
+      ? 'continuous'
+      : 'single';
+  } catch {
+    return 'single';
+  }
+}
+
+function PageSpinner() {
+  return (
+    <div
+      className="flex items-center justify-center py-20"
+      role="status"
+      aria-label="Loading PDF page"
+    >
+      <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
+}
+
+function SearchOverlay({ boxes }: { boxes: SearchBox[] }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {boxes.map((box) => (
+        <div
+          key={`${box.id}-${box.left}-${box.top}-${box.width}`}
+          data-search-active={box.active ? 'true' : undefined}
+          className={cn(
+            'absolute rounded-[2px] mix-blend-multiply dark:mix-blend-screen',
+            box.active ? 'bg-brass/50 ring-1 ring-brass/80' : 'bg-brass/25'
+          )}
+          style={{
+            left: `${box.left}%`,
+            top: `${box.top}%`,
+            width: `${box.width}%`,
+            height: `${box.height}%`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// In continuous mode, only mount pages near the viewport so large PDFs stay
+// responsive; a same-height placeholder keeps the scroll position stable.
+function LazyPage({
+  pageNumber,
+  scrollRootRef,
+  estimatedHeight,
+  children,
+}: {
+  pageNumber: number;
+  scrollRootRef: React.RefObject<HTMLDivElement | null>;
+  estimatedHeight: number;
+  children: React.ReactNode;
+}) {
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = slotRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => setVisible(entries[entries.length - 1].isIntersecting),
+      { root: scrollRootRef.current, rootMargin: '1400px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [scrollRootRef]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const el = slotRef.current;
+    if (!el) return;
+    const resize = new ResizeObserver(() => {
+      const h = el.offsetHeight;
+      if (h > 0) setMeasuredHeight((prev) => (prev === h ? prev : h));
+    });
+    resize.observe(el);
+    return () => resize.disconnect();
+  }, [visible]);
+
+  return (
+    <div
+      ref={slotRef}
+      data-page-slot={pageNumber}
+      className="scroll-mt-20"
+      style={
+        visible ? undefined : { height: measuredHeight ?? estimatedHeight }
+      }
+    >
+      {visible ? children : null}
+    </div>
+  );
+}
+
 export function PDFReader({
   document: doc,
   initialPage,
@@ -197,6 +300,8 @@ export function PDFReader({
     () => readToolbarPref().delaySeconds
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
+  const [pageAspect, setPageAspect] = useState<number | null>(null);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [showNotesPanel, setShowNotesPanel] = useState(false);
@@ -212,6 +317,7 @@ export function PDFReader({
     text: string;
     rects: DOMRect[];
     position: { x: number; y: number };
+    pageNumber: number;
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -219,10 +325,11 @@ export function PDFReader({
     undefined
   );
   const skipPageCommitRef = useRef(false);
-  const pageRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -239,6 +346,13 @@ export function PDFReader({
       const nextPage = Math.min(numPages, Math.max(1, requestedPage));
       setCurrentPage(nextPage);
       setPageInput(String(nextPage));
+      if (viewModeRef.current === 'continuous') {
+        requestAnimationFrame(() => {
+          containerRef.current
+            ?.querySelector(`[data-page-slot="${nextPage}"]`)
+            ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        });
+      }
     },
     [currentPage, numPages]
   );
@@ -313,6 +427,13 @@ export function PDFReader({
     setPdfProxy(pdf);
     setNumPages(pdf.numPages);
     try {
+      const first = await pdf.getPage(1);
+      const viewport = first.getViewport({ scale: 1 });
+      setPageAspect(viewport.height / viewport.width);
+    } catch {
+      setPageAspect(null);
+    }
+    try {
       const raw = await pdf.getOutline();
       setOutline(raw?.length ? await buildToc(pdf, raw) : []);
     } catch {
@@ -320,15 +441,29 @@ export function PDFReader({
     }
   }, []);
 
+  const scrollToPage = useCallback(
+    (page: number, behavior: ScrollBehavior = 'smooth') => {
+      const slot = containerRef.current?.querySelector(
+        `[data-page-slot="${page}"]`
+      );
+      slot?.scrollIntoView({ block: 'start', behavior });
+    },
+    []
+  );
+
   const goToPage = useCallback(
     (page: number) => {
       const max = numPages || page;
-      setCurrentPage(Math.max(1, Math.min(max, page)));
+      const target = Math.max(1, Math.min(max, page));
+      setCurrentPage(target);
+      if (viewModeRef.current === 'continuous') {
+        requestAnimationFrame(() => scrollToPage(target));
+      }
       if (window.matchMedia('(max-width: 1023px)').matches) {
         setShowOutline(false);
       }
     },
-    [numPages]
+    [numPages, scrollToPage]
   );
 
   const search = useDocumentSearch({
@@ -383,8 +518,10 @@ export function PDFReader({
   // rendered text-layer spans so they always line up with what the reader sees.
   // The text layer renders asynchronously, so poll until the current page's is in.
   useEffect(() => {
-    const pageEl = pageRef.current;
     const query = searchQuery.trim().toLowerCase();
+    const pageEl = containerRef.current?.querySelector(
+      `[data-page-wrapper="${currentPage}"]`
+    ) as HTMLElement | null;
     if (!pageEl || !query || renderedPageWidth === null) {
       setSearchBoxes([]);
       return;
@@ -550,6 +687,52 @@ export function PDFReader({
     return () => clearTimeout(debounced);
   }, [doc.id, currentPage]);
 
+  // Persist the page-layout preference.
+  useEffect(() => {
+    localStorage.setItem(VIEW_PREF_KEY, viewMode);
+  }, [viewMode]);
+
+  // Continuous mode: track which page is most in view so the indicator,
+  // progress bar, and saved position follow the scroll.
+  useEffect(() => {
+    if (viewMode !== 'continuous') return;
+    const root = containerRef.current;
+    if (!root || numPages < 1) return;
+
+    const ratios = new Map<number, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const page = Number((entry.target as HTMLElement).dataset.pageSlot);
+          if (page) ratios.set(page, entry.intersectionRatio);
+        }
+        let best = 0;
+        let bestRatio = 0;
+        for (const [page, ratio] of ratios) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            best = page;
+          }
+        }
+        if (best > 0) setCurrentPage((prev) => (prev === best ? prev : best));
+      },
+      { root, threshold: [0.1, 0.25, 0.5, 0.75, 1] }
+    );
+    for (const slot of root.querySelectorAll('[data-page-slot]')) {
+      observer.observe(slot);
+    }
+    return () => observer.disconnect();
+  }, [viewMode, numPages]);
+
+  // Jump to the current page when entering continuous mode (or on first load).
+  useEffect(() => {
+    if (viewMode !== 'continuous' || numPages < 1) return;
+    const raf = requestAnimationFrame(() =>
+      scrollToPage(currentPageRef.current, 'auto')
+    );
+    return () => cancelAnimationFrame(raf);
+  }, [viewMode, numPages, scrollToPage]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -571,12 +754,12 @@ export function PDFReader({
       switch (e.key) {
         case 'ArrowLeft':
         case 'ArrowUp':
-          setCurrentPage((p) => Math.max(1, p - 1));
+          goToPage(currentPageRef.current - 1);
           break;
         case 'ArrowRight':
         case 'ArrowDown':
         case ' ':
-          setCurrentPage((p) => Math.min(numPages, p + 1));
+          goToPage(currentPageRef.current + 1);
           e.preventDefault();
           break;
         case 'Escape':
@@ -610,13 +793,13 @@ export function PDFReader({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-    numPages,
     onClose,
     showOutline,
     showSearch,
     closeSearch,
     toggleBookmark,
     showShortcuts,
+    goToPage,
   ]);
 
   // Handle text selection
@@ -649,6 +832,16 @@ export function PDFReader({
     }
 
     const lastRect = rects[rects.length - 1];
+    const anchor = sel.anchorNode;
+    const anchorEl =
+      anchor instanceof Element ? anchor : (anchor?.parentElement ?? null);
+    const wrapper = anchorEl?.closest(
+      '[data-page-wrapper]'
+    ) as HTMLElement | null;
+    const pageNumber = wrapper
+      ? Number(wrapper.dataset.pageWrapper)
+      : currentPageRef.current;
+
     setSelection({
       text,
       rects: rects.map((r) => r),
@@ -656,6 +849,7 @@ export function PDFReader({
         x: lastRect.left + lastRect.width / 2,
         y: lastRect.bottom + 10,
       },
+      pageNumber,
     });
   }, []);
 
@@ -666,9 +860,13 @@ export function PDFReader({
 
   const handleHighlight = useCallback(
     async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
-      if (!selection || !pageRef.current) return;
+      if (!selection) return;
+      const wrapper = containerRef.current?.querySelector(
+        `[data-page-wrapper="${selection.pageNumber}"]`
+      ) as HTMLElement | null;
+      if (!wrapper) return;
 
-      const pageRect = pageRef.current.getBoundingClientRect();
+      const pageRect = wrapper.getBoundingClientRect();
       const normalizedRects = selection.rects.map((r) => ({
         x: ((r.left - pageRect.left) / pageRect.width) * 100,
         y: ((r.top - pageRect.top) / pageRect.height) * 100,
@@ -676,16 +874,21 @@ export function PDFReader({
         height: (r.height / pageRect.height) * 100,
       }));
 
-      await addHighlight(currentPage, selection.text, color, normalizedRects);
+      await addHighlight(
+        selection.pageNumber,
+        selection.text,
+        color,
+        normalizedRects
+      );
       window.getSelection()?.removeAllRanges();
       setSelection(null);
     },
-    [selection, currentPage, addHighlight]
+    [selection, addHighlight]
   );
 
   const handleSaveQuote = useCallback(async () => {
     if (!selection) return;
-    const quote = await addQuote(currentPage, selection.text);
+    const quote = await addQuote(selection.pageNumber, selection.text);
     window.getSelection()?.removeAllRanges();
     setSelection(null);
     if (quote) {
@@ -694,16 +897,16 @@ export function PDFReader({
         action: { label: 'View', onClick: () => navigate('/dashboard') },
       });
     }
-  }, [selection, currentPage, addQuote, navigate]);
+  }, [selection, addQuote, navigate]);
 
   const handleAddNote = useCallback(
     async (content: string) => {
       if (!selection) return;
-      await addNote(currentPage, content, selection.text);
+      await addNote(selection.pageNumber, content, selection.text);
       window.getSelection()?.removeAllRanges();
       setSelection(null);
     },
-    [selection, currentPage, addNote]
+    [selection, addNote]
   );
 
   const handleAddPageNote = useCallback(async () => {
@@ -719,6 +922,8 @@ export function PDFReader({
 
   const progressPercent =
     numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
+  const estimatedPageHeight =
+    (renderedPageWidth ?? 0) * (pageAspect ?? Math.SQRT2);
   const pageHighlights = getHighlightsForPage(currentPage);
   const currentPageNoteCount = getNotesForPage(currentPage).length;
   const totalNoteCount = notes.length;
@@ -780,7 +985,7 @@ export function PDFReader({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage <= 1}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -806,7 +1011,7 @@ export function PDFReader({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+              onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage >= numPages}
             >
               <ChevronRight className="w-5 h-5" />
@@ -917,6 +1122,19 @@ export function PDFReader({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Page layout</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={viewMode}
+                  onValueChange={(value) => setViewMode(value as ViewMode)}
+                >
+                  <DropdownMenuRadioItem value="single">
+                    One page at a time
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="continuous">
+                    Continuous scroll
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel>Toolbar</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={toolbarAutoHide ? String(toolbarHideDelay) : 'always'}
@@ -1067,56 +1285,69 @@ export function PDFReader({
           showNotesPanel && 'lg:pr-96'
         )}
       >
-        <div className="relative flex justify-center py-8 px-4 min-h-full">
+        <div
+          className={cn(
+            'relative py-8 px-4 min-h-full',
+            viewMode === 'continuous'
+              ? 'flex flex-col items-center gap-6'
+              : 'flex justify-center'
+          )}
+        >
           {pdfData && renderedPageWidth !== null && (
             <Document
               file={pdfData}
               onLoadSuccess={handleDocumentLoad}
               loading={null}
             >
-              <div
-                ref={pageRef}
-                className={cn(
-                  'pdf-page relative',
-                  isPageReady ? 'opacity-100' : 'opacity-0'
-                )}
-              >
-                <Page
-                  key={pageRenderKey}
-                  pageNumber={currentPage}
-                  width={renderedPageWidth}
-                  loading={null}
-                  onRenderSuccess={() => setReadyRenderKey(pageRenderKey)}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                />
-                <PageHighlights highlights={pageHighlights} />
-                {searchBoxes.length > 0 && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {searchBoxes.map((box) => (
-                      <div
-                        key={`${box.id}-${box.left}-${box.top}-${box.width}`}
-                        data-search-active={box.active ? 'true' : undefined}
-                        className={cn(
-                          'absolute rounded-[2px] mix-blend-multiply dark:mix-blend-screen',
-                          box.active
-                            ? 'bg-brass/50 ring-1 ring-brass/80'
-                            : 'bg-brass/25'
-                        )}
-                        style={{
-                          left: `${box.left}%`,
-                          top: `${box.top}%`,
-                          width: `${box.width}%`,
-                          height: `${box.height}%`,
-                        }}
+              {viewMode === 'single' ? (
+                <div
+                  data-page-wrapper={currentPage}
+                  className={cn(
+                    'pdf-page relative',
+                    isPageReady ? 'opacity-100' : 'opacity-0'
+                  )}
+                >
+                  <Page
+                    key={pageRenderKey}
+                    pageNumber={currentPage}
+                    width={renderedPageWidth}
+                    loading={null}
+                    onRenderSuccess={() => setReadyRenderKey(pageRenderKey)}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={true}
+                  />
+                  <PageHighlights highlights={pageHighlights} />
+                  {searchBoxes.length > 0 && (
+                    <SearchOverlay boxes={searchBoxes} />
+                  )}
+                </div>
+              ) : (
+                Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
+                  <LazyPage
+                    key={n}
+                    pageNumber={n}
+                    scrollRootRef={containerRef}
+                    estimatedHeight={estimatedPageHeight}
+                  >
+                    <div data-page-wrapper={n} className="pdf-page relative">
+                      <Page
+                        pageNumber={n}
+                        width={renderedPageWidth}
+                        loading={<PageSpinner />}
+                        renderTextLayer={true}
+                        renderAnnotationLayer={true}
                       />
-                    ))}
-                  </div>
-                )}
-              </div>
+                      <PageHighlights highlights={getHighlightsForPage(n)} />
+                      {n === currentPage && searchBoxes.length > 0 && (
+                        <SearchOverlay boxes={searchBoxes} />
+                      )}
+                    </div>
+                  </LazyPage>
+                ))
+              )}
             </Document>
           )}
-          {!isPageReady && (
+          {viewMode === 'single' && !isPageReady && (
             <div
               className="absolute inset-0 flex items-center justify-center"
               role="status"
@@ -1140,7 +1371,7 @@ export function PDFReader({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
           >
             <ChevronLeft className="w-6 h-6" />
@@ -1170,7 +1401,7 @@ export function PDFReader({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+            onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= numPages}
           >
             <ChevronRight className="w-6 h-6" />
