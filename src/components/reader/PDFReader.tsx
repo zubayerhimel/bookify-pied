@@ -12,6 +12,7 @@ import {
   MoreVertical,
   Plus,
   Search,
+  Settings,
   StickyNote,
   Sun,
   X,
@@ -39,6 +40,9 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -64,6 +68,35 @@ import { SelectionToolbar } from './SelectionToolbar';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import '@/lib/pdf-worker';
+
+// Toolbar visibility preference (persisted): auto-hide after a delay, or stay put.
+const TOOLBAR_PREF_KEY = 'pdf-reader-toolbar';
+const TOOLBAR_HIDE_DELAYS = [3, 5, 10] as const;
+
+interface ToolbarPref {
+  autoHide: boolean;
+  delaySeconds: number;
+}
+
+function readToolbarPref(): ToolbarPref {
+  const fallback: ToolbarPref = { autoHide: true, delaySeconds: 3 };
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(TOOLBAR_PREF_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<ToolbarPref>;
+    return {
+      autoHide: typeof parsed.autoHide === 'boolean' ? parsed.autoHide : true,
+      delaySeconds: (TOOLBAR_HIDE_DELAYS as readonly number[]).includes(
+        parsed.delaySeconds ?? 0
+      )
+        ? (parsed.delaySeconds as number)
+        : 3,
+    };
+  } catch {
+    return fallback;
+  }
+}
 
 interface PDFReaderProps {
   document: PDFDocument;
@@ -157,6 +190,13 @@ export function PDFReader({
   const [pageInput, setPageInput] = useState('1');
   const [scale, setScale] = useState(1);
   const [showToolbar, setShowToolbar] = useState(true);
+  const [toolbarAutoHide, setToolbarAutoHide] = useState(
+    () => readToolbarPref().autoHide
+  );
+  const [toolbarHideDelay, setToolbarHideDelay] = useState(
+    () => readToolbarPref().delaySeconds
+  );
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [showNotesPanel, setShowNotesPanel] = useState(false);
@@ -449,10 +489,12 @@ export function PDFReader({
     if (toolbarTimeoutRef.current) {
       clearTimeout(toolbarTimeoutRef.current);
     }
+    // Stay visible when the user opted out or is using the settings menu.
+    if (!toolbarAutoHide || settingsOpen) return;
     toolbarTimeoutRef.current = setTimeout(() => {
       setShowToolbar(false);
-    }, 3000);
-  }, []);
+    }, toolbarHideDelay * 1000);
+  }, [toolbarAutoHide, toolbarHideDelay, settingsOpen]);
 
   const handlePageInputBlur = useCallback(
     (event: React.FocusEvent<HTMLInputElement>) => {
@@ -470,6 +512,33 @@ export function PDFReader({
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [handleMouseMove]);
+
+  // Persist the toolbar preference.
+  useEffect(() => {
+    localStorage.setItem(
+      TOOLBAR_PREF_KEY,
+      JSON.stringify({
+        autoHide: toolbarAutoHide,
+        delaySeconds: toolbarHideDelay,
+      })
+    );
+  }, [toolbarAutoHide, toolbarHideDelay]);
+
+  // Apply the preference right away (e.g. when changed from the menu): reveal and
+  // stay put when auto-hide is off, otherwise (re)start the countdown.
+  useEffect(() => {
+    if (toolbarTimeoutRef.current) clearTimeout(toolbarTimeoutRef.current);
+    if (!toolbarAutoHide || settingsOpen) {
+      setShowToolbar(true);
+      return;
+    }
+    toolbarTimeoutRef.current = setTimeout(() => {
+      setShowToolbar(false);
+    }, toolbarHideDelay * 1000);
+    return () => {
+      if (toolbarTimeoutRef.current) clearTimeout(toolbarTimeoutRef.current);
+    };
+  }, [toolbarAutoHide, toolbarHideDelay, settingsOpen]);
 
   // Save reading progress
   useEffect(() => {
@@ -835,6 +904,46 @@ export function PDFReader({
               })}
             </div>
 
+            {/* Toolbar visibility settings */}
+            <DropdownMenu open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Reader settings"
+                  title="Reader settings"
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Toolbar</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={toolbarAutoHide ? String(toolbarHideDelay) : 'always'}
+                  onValueChange={(value) => {
+                    if (value === 'always') {
+                      setToolbarAutoHide(false);
+                    } else {
+                      setToolbarAutoHide(true);
+                      setToolbarHideDelay(Number(value));
+                    }
+                  }}
+                >
+                  <DropdownMenuRadioItem value="always">
+                    Always visible
+                  </DropdownMenuRadioItem>
+                  {TOOLBAR_HIDE_DELAYS.map((seconds) => (
+                    <DropdownMenuRadioItem
+                      key={seconds}
+                      value={String(seconds)}
+                    >
+                      Hide after {seconds}s
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Zoom Controls */}
             <div className="hidden md:flex items-center gap-1 ml-2">
               <Button
@@ -937,9 +1046,10 @@ export function PDFReader({
       {/* Progress Bar */}
       <div
         className={cn(
-          'fixed top-14.25 left-0 right-0 z-40 h-1 bg-muted transition-[left,right] duration-300',
+          'fixed top-14.25 left-0 right-0 z-40 h-1 bg-muted transition-[left,right,opacity] duration-300',
           showOutline && 'lg:left-80',
-          showNotesPanel && 'lg:right-96'
+          showNotesPanel && 'lg:right-96',
+          !showToolbar && 'opacity-0 pointer-events-none'
         )}
       >
         <div
