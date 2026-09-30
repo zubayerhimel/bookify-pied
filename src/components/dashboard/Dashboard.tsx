@@ -2,6 +2,8 @@ import { formatDistanceToNow } from 'date-fns';
 import {
   Calendar,
   ChevronRight,
+  Copy,
+  Download,
   FileText,
   Filter,
   Quote as QuoteIcon,
@@ -11,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +25,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -31,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { triggerDownload } from '@/lib/annotations-transfer';
 import {
   deleteNote,
   deleteQuote,
@@ -39,6 +49,7 @@ import {
   getAllQuotes,
 } from '@/lib/db/database';
 import type { Note, PDFDocument, Quote } from '@/lib/db/types';
+import { quotesNotesToMarkdown } from '@/lib/markdown-export';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -118,6 +129,46 @@ export function Dashboard() {
     setDeleteItem(null);
   };
 
+  const hasExports = filteredQuotes.length > 0 || filteredNotes.length > 0;
+
+  const exportFileName = (): string => {
+    if (filterPdfId !== 'all') {
+      const title = getDocumentTitle(filterPdfId).replace(
+        /[\\/:*?"<>|]+/g,
+        '_'
+      );
+      return `${title || 'quotes-and-notes'}.md`;
+    }
+    return 'quotes-and-notes.md';
+  };
+
+  const handleCopyMarkdown = async () => {
+    const markdown = quotesNotesToMarkdown({
+      quotes: filteredQuotes,
+      notes: filteredNotes,
+      documents,
+    });
+    try {
+      await navigator.clipboard.writeText(markdown);
+      toast.success('Copied as Markdown');
+    } catch {
+      toast.error('Could not copy to the clipboard.');
+    }
+  };
+
+  const handleDownloadMarkdown = () => {
+    const markdown = quotesNotesToMarkdown({
+      quotes: filteredQuotes,
+      notes: filteredNotes,
+      documents,
+    });
+    triggerDownload(
+      new Blob([markdown], { type: 'text/markdown' }),
+      exportFileName()
+    );
+    toast.success('Downloaded Markdown');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-100">
@@ -128,13 +179,38 @@ export function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="font-reading text-3xl sm:text-4xl font-semibold text-foreground tracking-tight mb-2">
-          Quotes & Notes
-        </h1>
-        <p className="text-muted-foreground">
-          All your saved quotes and notes from your library
-        </p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="font-reading text-3xl sm:text-4xl font-semibold text-foreground tracking-tight mb-2">
+            Quotes & Notes
+          </h1>
+          <p className="text-muted-foreground">
+            All your saved quotes and notes from your library
+          </p>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="gap-2 shrink-0"
+              disabled={!hasExports}
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleCopyMarkdown}>
+              <Copy className="w-4 h-4 mr-2" />
+              Copy as Markdown
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadMarkdown}>
+              <Download className="w-4 h-4 mr-2" />
+              Download .md
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filters */}
