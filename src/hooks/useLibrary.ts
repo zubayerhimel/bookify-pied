@@ -7,10 +7,34 @@ import { deleteDocument as dbDeleteDocument, getAllDocuments, getDocument, saveD
 import type { PDFDocument } from "@/lib/db/types";
 import "@/lib/pdf-worker";
 
+export interface UploadProgress {
+  fileName: string;
+  percent: number;
+  index: number;
+  batchTotal: number;
+}
+
+// Stream the file so the progress bar reflects real bytes read; returns the
+// full contents for pdf.js so the file is only read once.
+async function readFileWithProgress(file: File, onProgress: (loaded: number) => void): Promise<Uint8Array> {
+  const buffer = new Uint8Array(file.size);
+  const reader = file.stream().getReader();
+  let offset = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer.set(value, offset);
+    offset += value.length;
+    onProgress(offset);
+  }
+  return buffer;
+}
+
 export function useLibrary() {
   const [documents, setDocuments] = useState<PDFDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadDocuments = useCallback(async () => {
@@ -68,17 +92,26 @@ export function useLibrary() {
     }
   }, []);
 
-  const uploadDocument = useCallback(
-    async (file: File): Promise<PDFDocument | null> => {
-      const objectUrl = URL.createObjectURL(file);
+  const uploadSingle = useCallback(
+    async (file: File, index: number, batchTotal: number): Promise<PDFDocument | null> => {
       let loadingTask: ReturnType<typeof pdfjs.getDocument> | null = null;
 
       try {
-        setUploading(true);
         setError(null);
-        loadingTask = pdfjs.getDocument({ url: objectUrl });
+        setUploadProgress({ fileName: file.name, percent: 0, index, batchTotal });
+
+        // Reading the file drives the bulk of the bar (0–90%); parsing and
+        // saving finish it off. There is no network here, so this reflects the
+        // real work of ingesting the PDF.
+        const data = await readFileWithProgress(file, (loaded) => {
+          const percent = file.size > 0 ? Math.round((loaded / file.size) * 90) : 90;
+          setUploadProgress({ fileName: file.name, percent, index, batchTotal });
+        });
+
+        loadingTask = pdfjs.getDocument({ data });
         const pdf = await loadingTask.promise;
         const totalPages = pdf.numPages;
+        setUploadProgress({ fileName: file.name, percent: 95, index, batchTotal });
 
         // Restore embedded annotations if this PDF was exported from the app.
         const bundle = await extractAnnotationBundle(file).catch(() => null);
@@ -101,6 +134,7 @@ export function useLibrary() {
 
         // Persist first so a slow or failed cover render never blocks the import.
         await saveDocumentWithFile(doc, { id, data: file });
+        setUploadProgress({ fileName: file.name, percent: 100, index, batchTotal });
         setDocuments((prev) => [doc, ...prev]);
 
         if (bundle) {
@@ -128,7 +162,6 @@ export function useLibrary() {
           .catch((err) => console.error("Error generating thumbnail:", err))
           .finally(() => {
             task?.destroy();
-            URL.revokeObjectURL(objectUrl);
           });
 
         return doc;
@@ -136,13 +169,39 @@ export function useLibrary() {
         console.error("Error uploading document:", err);
         setError(err instanceof DOMException && err.name === "QuotaExceededError" ? "Not enough browser storage is available for this PDF." : "Failed to upload PDF.");
         loadingTask?.destroy();
-        URL.revokeObjectURL(objectUrl);
         return null;
-      } finally {
-        setUploading(false);
       }
     },
     [generateThumbnail],
+  );
+
+  const uploadDocument = useCallback(
+    async (file: File): Promise<PDFDocument | null> => {
+      setUploading(true);
+      try {
+        return await uploadSingle(file, 1, 1);
+      } finally {
+        setUploading(false);
+        setUploadProgress(null);
+      }
+    },
+    [uploadSingle],
+  );
+
+  const uploadDocuments = useCallback(
+    async (files: File[]): Promise<void> => {
+      if (files.length === 0) return;
+      setUploading(true);
+      try {
+        for (let i = 0; i < files.length; i++) {
+          await uploadSingle(files[i], i + 1, files.length);
+        }
+      } finally {
+        setUploading(false);
+        setUploadProgress(null);
+      }
+    },
+    [uploadSingle],
   );
 
   const renameDocument = useCallback(async (id: string, newTitle: string): Promise<void> => {
@@ -180,8 +239,10 @@ export function useLibrary() {
     documents,
     loading,
     uploading,
+    uploadProgress,
     error,
     uploadDocument,
+    uploadDocuments,
     renameDocument,
     deleteDocument: deleteDocumentById,
     refreshDocument,

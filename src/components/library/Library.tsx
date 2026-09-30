@@ -18,8 +18,9 @@ export function Library() {
     documents,
     loading,
     uploading,
+    uploadProgress,
     error,
-    uploadDocument,
+    uploadDocuments,
     renameDocument,
     deleteDocument,
   } = useLibrary();
@@ -39,11 +40,9 @@ export function Library() {
           file.type === 'application/pdf' ||
           file.name.toLowerCase().endsWith('.pdf')
       );
-      for (const file of pdfs) {
-        await uploadDocument(file);
-      }
+      await uploadDocuments(pdfs);
     },
-    [uploadDocument]
+    [uploadDocuments]
   );
 
   const handleFileChange = useCallback(
@@ -181,6 +180,30 @@ export function Library() {
         <p role="alert" className="mb-6 text-sm text-destructive">
           {error}
         </p>
+      )}
+
+      {uploadProgress && (
+        <div className="mb-6 rounded-xl border bg-card p-4 shadow-soft">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Upload className="h-4 w-4 shrink-0 animate-pulse text-primary" />
+              <span className="truncate text-sm font-medium text-foreground">
+                {uploadProgress.batchTotal > 1
+                  ? `Uploading ${uploadProgress.index} of ${uploadProgress.batchTotal}: ${uploadProgress.fileName}`
+                  : `Uploading ${uploadProgress.fileName}`}
+              </span>
+            </div>
+            <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+              {uploadProgress.percent}%
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
+              style={{ width: `${uploadProgress.percent}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Library Grid or Empty State */}
